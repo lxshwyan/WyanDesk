@@ -9,7 +9,8 @@
 <p align="center">
   <a href="https://desk.wyanhub.com"><strong>在线体验</strong></a> ·
   <a href="README.en.md">English</a> ·
-  <a href="https://github.com/lxshwyan/WyanDesk/releases">下载扩展</a>
+  <a href="https://github.com/lxshwyan/WyanDesk/releases">下载扩展</a> ·
+  <a href="https://gitee.com/lxsh_wyan/WyanDesk">Gitee 镜像</a>
 </p>
 
 <p align="center">
@@ -22,6 +23,8 @@
 ![WyanDesk 桌面总览](docs/images/wyandesk-overview.png)
 
 > 在线站点当前处于域名备案与证书链路逐步生效阶段。如果暂时无法打开，可以按下方步骤在本地运行；本地模式不需要账号和后端服务。
+
+代码仓库：[GitHub 主仓库](https://github.com/lxshwyan/WyanDesk) · [Gitee 国内镜像](https://gitee.com/lxsh_wyan/WyanDesk)。开发、Issue 与 Pull Request 以 GitHub 为准，Gitee 用于国内访问和分发。
 
 ## 为什么做 WyanDesk
 

@@ -9,12 +9,15 @@
 <p align="center">
   <a href="https://desk.wyanhub.com"><strong>Live demo</strong></a> ·
   <a href="README.md">简体中文</a> ·
-  <a href="https://github.com/lxshwyan/WyanDesk/releases">Extension downloads</a>
+  <a href="https://github.com/lxshwyan/WyanDesk/releases">Extension downloads</a> ·
+  <a href="https://gitee.com/lxsh_wyan/WyanDesk">Gitee mirror</a>
 </p>
 
 ![WyanDesk overview](docs/images/wyandesk-overview.png)
 
 > The public site is currently waiting for its domain filing and certificate path to become fully active. If it is temporarily unavailable, run the app locally; local mode requires no account or backend.
+
+Repositories: [GitHub primary](https://github.com/lxshwyan/WyanDesk) · [Gitee China mirror](https://gitee.com/lxsh_wyan/WyanDesk). Development, issues, and pull requests are tracked on GitHub; Gitee is provided for access and distribution in China.
 
 ## Highlights
 
