@@ -1,0 +1,11 @@
+node_modules
+dist
+extension-dist
+.git
+.github
+docs
+*.log
+.DS_Store
+task_plan.md
+findings.md
+progress.md

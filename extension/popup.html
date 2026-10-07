@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>收藏到微言桌面</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main>
+      <header><span class="mark">W</span><span><strong>收藏到微言桌面</strong><small>WyanDesk</small></span></header>
+      <section class="destination">
+        <label><span>桌面</span><select id="workspace"></select></label>
+        <label><span>分类</span><select id="category"></select></label>
+      </section>
+      <button class="primary" id="savePage" type="button"><span>＋</span><span><strong>收藏当前网页</strong><small>仅读取当前打开的页面</small></span></button>
+      <div class="group-box">
+        <label><span>标签组名称</span><input id="groupTitle" maxlength="30" placeholder="例如：本周研究资料" /></label>
+        <button class="secondary" id="saveWindow" type="button"><span>▦</span><span><strong>保存当前窗口</strong><small>首次使用时申请读取标签页</small></span></button>
+      </div>
+      <section class="bookmark-box" aria-labelledby="bookmark-title">
+        <div class="section-heading"><span><strong id="bookmark-title">浏览器书签迁移</strong><small>保留文件夹分类，不覆盖原内容</small></span><span class="permission-chip">按需授权</span></div>
+        <div class="bookmark-actions">
+          <button class="compact" id="importBookmarks" type="button"><span>↓</span><span><strong>导入浏览器书签</strong><small>加入当前桌面</small></span></button>
+          <button class="compact" id="exportBookmarks" type="button"><span>↑</span><span><strong>导出当前桌面</strong><small>写入浏览器书签</small></span></button>
+        </div>
+      </section>
+      <p id="status" role="status">收藏后会自动出现在下一个微言桌面标签页。</p>
+      <footer>标签页与书签权限都只在点击对应功能时申请</footer>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 在线体验 / Live demo
+    url: https://desk.wyanhub.com
+    about: 先体验最新公开部署版本。
+  - name: 私密安全报告 / Private security report
+    url: https://github.com/lxshwyan/WyanDesk/security/advisories/new
+    about: 请勿在公开 Issue 中披露安全漏洞。

@@ -1,0 +1,46 @@
+name: Bug 报告
+description: 报告可以稳定复现的问题
+title: "[Bug] "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: 感谢反馈。请先移除截图、导出文件和日志中的私人网址、账号、便签和任务内容。
+  - type: input
+    id: version
+    attributes:
+      label: WyanDesk 版本
+      placeholder: 例如 0.2.5-beta
+    validations:
+      required: true
+  - type: dropdown
+    id: runtime
+    attributes:
+      label: 使用方式
+      options:
+        - 官方在线站点
+        - 本地开发环境
+        - 自托管站点
+        - Chrome / Edge 扩展
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: 浏览器与系统
+      placeholder: 例如 Chrome 154 / macOS
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      placeholder: 1. 打开… 2. 点击… 3. 出现…
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期与实际结果
+    validations:
+      required: true

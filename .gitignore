@@ -1,0 +1,14 @@
+node_modules/
+dist/
+extension-dist/
+.DS_Store
+.env
+.env.*
+!.env.example
+*.local
+*.log
+coverage/
+.planning/
+task_plan.md
+findings.md
+progress.md
