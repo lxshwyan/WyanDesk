@@ -1,8 +1,8 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { flushSync } from 'react-dom';
 import packageInfo from '../package.json';
 import {
   AppWindow,
-  Bell,
   BellRing,
   BookMarked,
   CalendarClock,
@@ -57,10 +57,13 @@ import {
 } from 'lucide-react';
 import { CommandPalette, type CommandShortcut, type DeskCommand } from './components/CommandPalette';
 import { CategoryManager } from './components/CategoryManager';
+import { CalculatorCard } from './components/CalculatorCard';
 import { CloudHistoryModal } from './components/CloudHistoryModal';
 import { DeleteCloudDataModal } from './components/DeleteCloudDataModal';
+import { DailyOverviewCard } from './components/DailyOverviewCard';
 import { FocusTimerCard } from './components/FocusTimerCard';
 import { QuickActionsCard } from './components/QuickActionsCard';
+import { ReminderSettingsModal } from './components/ReminderSettingsModal';
 import { SceneBackdrop } from './components/SceneBackdrop';
 import { ScheduleCard } from './components/ScheduleCard';
 import { ShortcutCard } from './components/ShortcutCard';
@@ -68,17 +71,21 @@ import { ShortcutManager } from './components/ShortcutManager';
 import { ShortcutGroupManager } from './components/ShortcutGroupManager';
 import { SyncConflictModal } from './components/SyncConflictModal';
 import { TaskDetailsModal } from './components/TaskDetailsModal';
+import { TaskCreateModal } from './components/TaskCreateModal';
 import { TimeEventModal } from './components/TimeEventModal';
 import { TimeEventsStrip } from './components/TimeEventsStrip';
 import { FlipClock } from './components/FlipClock';
 import { KeyboardHelpModal } from './components/KeyboardHelpModal';
 import { LockActivityModal } from './components/LockActivityModal';
 import { LockPinModal, type LockPinMode } from './components/LockPinModal';
+import { MonthCalendarCard } from './components/MonthCalendarCard';
 import { TrustCenterModal, type TrustPanel } from './components/TrustCenterModal';
 import { InboxModal } from './components/InboxModal';
 import { OnboardingModal, type DeskTemplate } from './components/OnboardingModal';
 import { WorkspaceManager } from './components/WorkspaceManager';
 import { WidgetFrame } from './components/WidgetFrame';
+import { WorldClockCard } from './components/WorldClockCard';
+import { WorldClockSettingsModal } from './components/WorldClockSettingsModal';
 import { createDefaultState, defaultShortcuts } from './data/defaults';
 import { mergeBrowserBookmarks, parseBrowserBookmarks } from './lib/bookmarks';
 import { categoryDeleteTarget, categoryExists, cleanCategoryName, deleteCategory, moveCategory, renameCategory } from './lib/categories';
@@ -94,8 +101,8 @@ import { parseWorkspaceTemplate, serializeWorkspaceTemplate } from './lib/worksp
 import { useDeskSync } from './hooks/useDeskSync';
 import { hasLockPin, verifyLockPin } from './lib/lockPin';
 import { appendLockActivity, clearLockActivityLog, countLockActivity, readLockActivityLog, writeLockActivityLog, type LockActivityKind } from './lib/lockActivity';
-import { createDefaultWorkspaceLayout, shortcutItemLimit, updateWidgetSize } from './lib/widgetLayout';
-import type { DeskEvent, DeskInboxItem, DeskPreferences, DeskRailWidth, DeskReminder, DeskState, DeskTask, DeskTimeEvent, DeskWidgetHeight, DeskWidgetId, DeskWidgetSize, DeskWorkspace, SceneId, Shortcut, ShortcutGroup } from './types';
+import { createDefaultWorkspaceLayout, moveRailWidget, shortcutItemLimit, swapRailWidgets, updateWidgetSize } from './lib/widgetLayout';
+import type { DeskEvent, DeskInboxItem, DeskPreferences, DeskRailWidgetId, DeskRailWidth, DeskReminder, DeskState, DeskTask, DeskTimeEvent, DeskWidgetHeight, DeskWidgetId, DeskWidgetSize, DeskWorkspace, SceneId, Shortcut, ShortcutGroup } from './types';
 
 const sceneOptions: Array<{ id: SceneId; name: string; description: string }> = [
   { id: 'dawn', name: '晨雾山川', description: '柔和、清透' },
@@ -111,6 +118,7 @@ const reminderIcons: Record<DeskReminder['kind'], string> = {
   water: '水',
   meal: '餐',
   rest: '休',
+  custom: '提',
 };
 
 interface BeforeInstallPromptEvent extends Event {
@@ -159,6 +167,9 @@ function App() {
   const [query, setQuery] = useState('');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [layoutEditing, setLayoutEditing] = useState(false);
+  const [draggingWidgetId, setDraggingWidgetId] = useState<DeskRailWidgetId | null>(null);
+  const [dragTargetWidgetId, setDragTargetWidgetId] = useState<DeskRailWidgetId | null>(null);
+  const dragTargetWidgetIdRef = useRef<DeskRailWidgetId | null>(null);
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
   const [workspaceManagerOpen, setWorkspaceManagerOpen] = useState(false);
@@ -183,14 +194,17 @@ function App() {
   const [lockPinEnabled, setLockPinEnabled] = useState(hasLockPin);
   const [lockPinMode, setLockPinMode] = useState<LockPinMode | null>(null);
   const [lockActivityLog, setLockActivityLog] = useState(readLockActivityLog);
-  const [lockActivityPanel, setLockActivityPanel] = useState<'report' | 'history' | null>(null);
-  const [lockActivityReportSessionId, setLockActivityReportSessionId] = useState('');
+  const [lockActivityPanelOpen, setLockActivityPanelOpen] = useState(false);
   const [unlockPin, setUnlockPin] = useState('');
   const [unlockError, setUnlockError] = useState('');
   const [unlocking, setUnlocking] = useState(false);
+  const [unlockPending, setUnlockPending] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(() => Boolean(document.fullscreenElement));
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [taskDraft, setTaskDraft] = useState('');
+  const [taskCreateModalOpen, setTaskCreateModalOpen] = useState(false);
+  const [reminderSettingsOpen, setReminderSettingsOpen] = useState(false);
+  const [worldClockSettingsOpen, setWorldClockSettingsOpen] = useState(false);
   const [taskDetailId, setTaskDetailId] = useState('');
   const [toast, setToast] = useState<ToastMessage | null>(null);
   const [saveStatus, setSaveStatus] = useState<'saving' | 'saved' | 'error'>('saved');
@@ -206,6 +220,10 @@ function App() {
   const unlockPinRef = useRef<HTMLInputElement>(null);
   const toastTimerRef = useRef<number | undefined>(undefined);
   const fullscreenOwnedRef = useRef(false);
+  const fullscreenRequestPendingRef = useRef(false);
+  const unlockRequestedRef = useRef(false);
+  const unlockRevealFrameRef = useRef<number | undefined>(undefined);
+  const unlockRevealSecondFrameRef = useRef<number | undefined>(undefined);
   const lockActivityLogRef = useRef(lockActivityLog);
   const activeLockSessionRef = useRef<{ id: string; startedAt: string } | null>(null);
   const deskSync = useDeskSync(state, setState, initialRead.isNew);
@@ -231,14 +249,32 @@ function App() {
   }, [state.preferences.lockActivityEnabled]);
 
   const finishLockActivitySession = useCallback(() => {
-    const session = activeLockSessionRef.current;
     activeLockSessionRef.current = null;
-    if (!session) return;
-    const entries = lockActivityLogRef.current.filter((entry) => entry.sessionId === session.id);
-    if (!entries.length) return;
-    setLockActivityReportSessionId(session.id);
-    setLockActivityPanel('report');
   }, []);
+
+  const finalizeUnlock = useCallback(() => {
+    window.cancelAnimationFrame(unlockRevealFrameRef.current ?? 0);
+    window.cancelAnimationFrame(unlockRevealSecondFrameRef.current ?? 0);
+    unlockRevealFrameRef.current = undefined;
+    unlockRevealSecondFrameRef.current = undefined;
+    finishLockActivitySession();
+    fullscreenOwnedRef.current = false;
+    fullscreenRequestPendingRef.current = false;
+    unlockRequestedRef.current = false;
+    setIsFullscreen(Boolean(document.fullscreenElement));
+    setIsLocked(false);
+    setUnlockPending(false);
+    setUnlockPin('');
+    setUnlockError('');
+  }, [finishLockActivitySession]);
+
+  const scheduleUnlockReveal = useCallback(() => {
+    window.cancelAnimationFrame(unlockRevealFrameRef.current ?? 0);
+    window.cancelAnimationFrame(unlockRevealSecondFrameRef.current ?? 0);
+    unlockRevealFrameRef.current = window.requestAnimationFrame(() => {
+      unlockRevealSecondFrameRef.current = window.requestAnimationFrame(finalizeUnlock);
+    });
+  }, [finalizeUnlock]);
 
   const lockDesktop = useCallback((enterFullscreen: boolean) => {
     setSettingsOpen(false);
@@ -253,6 +289,9 @@ function App() {
     setEventModalOpen(false);
     setTimeEventModalOpen(false);
     setEditingTimeEventId('');
+    setTaskCreateModalOpen(false);
+    setReminderSettingsOpen(false);
+    setWorldClockSettingsOpen(false);
     setTaskDetailId('');
     setCommandOpen(false);
     setKeyboardHelpOpen(false);
@@ -264,34 +303,46 @@ function App() {
     setToast(null);
     setUnlockPin('');
     setUnlockError('');
-    setLockActivityPanel(null);
-    setLockActivityReportSessionId('');
+    setUnlocking(false);
+    setUnlockPending(false);
+    setLockActivityPanelOpen(false);
+    unlockRequestedRef.current = false;
     const startedAt = new Date().toISOString();
     activeLockSessionRef.current = state.preferences.lockActivityEnabled ? { id: uid('lock-session'), startedAt } : null;
 
+    if (document.fullscreenElement) fullscreenOwnedRef.current = true;
     if (enterFullscreen && document.fullscreenEnabled && !document.fullscreenElement) {
+      flushSync(() => setIsLocked(true));
       fullscreenOwnedRef.current = true;
-      void document.documentElement.requestFullscreen().catch(() => {
+      fullscreenRequestPendingRef.current = true;
+      void document.documentElement.requestFullscreen().then(() => {
+        fullscreenRequestPendingRef.current = false;
+        if (unlockRequestedRef.current && document.fullscreenElement) {
+          void document.exitFullscreen().catch(() => undefined);
+        }
+      }).catch(() => {
+        fullscreenRequestPendingRef.current = false;
         fullscreenOwnedRef.current = false;
+        if (unlockRequestedRef.current) scheduleUnlockReveal();
       });
+      return;
     }
     setIsLocked(true);
-  }, [state.preferences.lockActivityEnabled]);
-
-  const exitLockFullscreen = useCallback(() => {
-    if (document.fullscreenElement) {
-      void document.exitFullscreen().catch(() => undefined);
-    }
-    fullscreenOwnedRef.current = false;
-  }, []);
+  }, [scheduleUnlockReveal, state.preferences.lockActivityEnabled]);
 
   const unlockDesktop = useCallback(() => {
-    finishLockActivitySession();
-    setIsLocked(false);
-    setUnlockPin('');
-    setUnlockError('');
-    if (fullscreenOwnedRef.current) exitLockFullscreen();
-  }, [exitLockFullscreen, finishLockActivitySession]);
+    if (!isLocked || unlockRequestedRef.current) return;
+    unlockRequestedRef.current = true;
+    setUnlockPending(true);
+    if (fullscreenOwnedRef.current) {
+      if (fullscreenRequestPendingRef.current) return;
+      if (document.fullscreenElement) {
+        void document.exitFullscreen().catch(() => scheduleUnlockReveal());
+        return;
+      }
+    }
+    scheduleUnlockReveal();
+  }, [isLocked, scheduleUnlockReveal]);
 
   async function submitUnlockPin(event: FormEvent) {
     event.preventDefault();
@@ -356,9 +407,12 @@ function App() {
       setIsFullscreen(fullscreen);
       if (!fullscreen) {
         if (wasLockFullscreen) {
-          recordLockActivity('fullscreen-exit');
+          if (!unlockRequestedRef.current) recordLockActivity('fullscreen-exit');
           fullscreenOwnedRef.current = false;
-          unlockDesktop();
+          fullscreenRequestPendingRef.current = false;
+          unlockRequestedRef.current = true;
+          setUnlockPending(true);
+          scheduleUnlockReveal();
         } else {
           fullscreenOwnedRef.current = false;
         }
@@ -366,7 +420,12 @@ function App() {
     };
     document.addEventListener('fullscreenchange', syncFullscreenState);
     return () => document.removeEventListener('fullscreenchange', syncFullscreenState);
-  }, [recordLockActivity, unlockDesktop]);
+  }, [recordLockActivity, scheduleUnlockReveal]);
+
+  useEffect(() => () => {
+    window.cancelAnimationFrame(unlockRevealFrameRef.current ?? 0);
+    window.cancelAnimationFrame(unlockRevealSecondFrameRef.current ?? 0);
+  }, []);
 
   useEffect(() => {
     const captureInstallPrompt = (event: Event) => {
@@ -443,6 +502,8 @@ function App() {
         setShortcutGroupManagerOpen(false);
         setCategoryModalOpen(false);
         setEventModalOpen(false);
+        setTaskCreateModalOpen(false);
+        setReminderSettingsOpen(false);
         setTaskDetailId('');
         setCommandOpen(false);
         setKeyboardHelpOpen(false);
@@ -490,9 +551,11 @@ function App() {
       if (!isUnlockAction(event.target)) recordLockActivity('keyboard');
     };
     const onVisibilityChange = () => {
-      if (document.visibilityState === 'hidden') recordLockActivity('context-switch');
+      if (!unlockRequestedRef.current && document.visibilityState === 'hidden') recordLockActivity('context-switch');
     };
-    const onWindowBlur = () => recordLockActivity('context-switch');
+    const onWindowBlur = () => {
+      if (!unlockRequestedRef.current) recordLockActivity('context-switch');
+    };
     window.addEventListener('pointerdown', onPointerDown, true);
     window.addEventListener('keydown', onKeyActivity, true);
     document.addEventListener('visibilitychange', onVisibilityChange);
@@ -626,6 +689,8 @@ function App() {
   const nextReminder = useMemo(() => getNextReminder(state.reminders, now), [now, state.reminders]);
   const enabledReminderCount = state.reminders.filter((item) => item.enabled).length;
   const openTaskCount = workspace.tasks.filter((item) => !item.done).length;
+  const todayEventCount = workspace.events.filter((item) => item.date === todayKey).length;
+  const focusTaskTitle = workspace.tasks.find((item) => item.id === workspace.focusTaskId && !item.done)?.text || '';
   const lockActivityCount = countLockActivity(lockActivityLog);
   const latestLockActivity = lockActivityLog.at(-1);
   const selectedTask = workspace.tasks.find((task) => task.id === taskDetailId);
@@ -640,12 +705,76 @@ function App() {
     clearLockActivityLog();
     lockActivityLogRef.current = [];
     setLockActivityLog([]);
-    setLockActivityReportSessionId('');
     notify('本地锁屏活动记录已清空');
   }
 
   function updateCurrentWidget(id: DeskWidgetId, next: Partial<DeskWidgetSize>) {
     updateWorkspace((current) => ({ ...current, layout: updateWidgetSize(current.layout, id, next) }));
+  }
+
+  function moveCurrentRailWidget(id: DeskRailWidgetId, direction: -1 | 1) {
+    updateWorkspace((current) => ({ ...current, layout: moveRailWidget(current.layout, id, direction) }));
+  }
+
+  function startDraggedRailWidget(id: DeskRailWidgetId) {
+    dragTargetWidgetIdRef.current = null;
+    setDragTargetWidgetId(null);
+    setDraggingWidgetId(id);
+  }
+
+  function moveDraggedRailWidget(sourceId: DeskRailWidgetId, clientX: number, clientY: number) {
+    if (!layoutEditing) return;
+    const target = document.elementFromPoint(clientX, clientY)?.closest<HTMLElement>('.widget-frame[data-widget]');
+    const targetId = target?.dataset.widget as DeskRailWidgetId | undefined;
+    const nextTargetId = targetId && targetId !== sourceId && workspace.layout.widgetOrder.includes(targetId) ? targetId : null;
+    if (dragTargetWidgetIdRef.current !== nextTargetId) {
+      dragTargetWidgetIdRef.current = nextTargetId;
+      setDragTargetWidgetId(nextTargetId);
+    }
+    if (clientY < 90) window.scrollBy({ top: -18, behavior: 'auto' });
+    else if (clientY > window.innerHeight - 90) window.scrollBy({ top: 18, behavior: 'auto' });
+  }
+
+  function captureRailWidgetRects(): Map<DeskRailWidgetId, DOMRect> {
+    return new Map(Array.from(document.querySelectorAll<HTMLElement>('.today-rail > .widget-frame[data-widget]')).map((element) => [
+      element.dataset.widget as DeskRailWidgetId,
+      element.getBoundingClientRect(),
+    ]));
+  }
+
+  function animateRailWidgetDrop(before: Map<DeskRailWidgetId, DOMRect>) {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    document.querySelectorAll<HTMLElement>('.today-rail > .widget-frame[data-widget]').forEach((element) => {
+      const id = element.dataset.widget as DeskRailWidgetId;
+      const previous = before.get(id);
+      if (!previous || typeof element.animate !== 'function') return;
+      const current = element.getBoundingClientRect();
+      const deltaX = previous.left - current.left;
+      const deltaY = previous.top - current.top;
+      if (Math.abs(deltaX) < 1 && Math.abs(deltaY) < 1) return;
+      element.animate([
+        { transform: `translate3d(${deltaX}px, ${deltaY}px, 0)` },
+        { transform: 'translate3d(0, 0, 0)' },
+      ], {
+        duration: 260,
+        easing: 'cubic-bezier(.22, 1, .36, 1)',
+      });
+    });
+  }
+
+  function finishDraggedRailWidget(sourceId: DeskRailWidgetId) {
+    const targetId = dragTargetWidgetIdRef.current;
+    dragTargetWidgetIdRef.current = null;
+    flushSync(() => {
+      setDraggingWidgetId(null);
+      setDragTargetWidgetId(null);
+    });
+    if (!targetId || targetId === sourceId) return;
+    const before = captureRailWidgetRects();
+    flushSync(() => {
+      updateWorkspace((current) => ({ ...current, layout: swapRailWidgets(current.layout, sourceId, targetId) }));
+    });
+    animateRailWidgetDrop(before);
   }
 
   function setRailWidth(railWidth: DeskRailWidth) {
@@ -801,22 +930,26 @@ function App() {
   }
 
   function addTaskText(value: string): boolean {
-    const text = value.trim();
+    return addTaskDetails({ text: value, recurrence: 'none' });
+  }
+
+  function addTaskDetails(draft: Pick<DeskTask, 'text' | 'dueDate' | 'reminderTime' | 'recurrence'>): boolean {
+    const text = draft.text.trim();
     if (!text) return false;
     updateWorkspace((current) => ({
       ...current,
-      tasks: [{ id: uid('task'), text, done: false, createdAt: new Date().toISOString() }, ...current.tasks],
+      tasks: [{
+        id: uid('task'),
+        text,
+        done: false,
+        createdAt: new Date().toISOString(),
+        dueDate: draft.dueDate,
+        reminderTime: draft.dueDate ? draft.reminderTime : undefined,
+        recurrence: draft.dueDate ? draft.recurrence || 'none' : 'none',
+      }, ...current.tasks],
     }));
     notify('任务已添加');
     return true;
-  }
-
-  function focusTaskInput() {
-    updatePreferences({ showTasks: true });
-    window.requestAnimationFrame(() => {
-      taskInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      taskInputRef.current?.focus();
-    });
   }
 
   function toggleTask(id: string) {
@@ -1178,6 +1311,43 @@ function App() {
       ...current,
       reminders: current.reminders.map((item) => item.id === id ? { ...item, ...next } : item),
     }));
+  }
+
+  function addReminder(draft: Pick<DeskReminder, 'title' | 'time' | 'kind'>): boolean {
+    const title = draft.title.trim().replace(/\s+/g, ' ').slice(0, 30);
+    if (!title || !draft.time) {
+      notify('请填写提醒名称和时间');
+      return false;
+    }
+    if (state.reminders.length >= 20) {
+      notify('最多保留 20 个提醒');
+      return false;
+    }
+    if (state.reminders.some((item) => item.title.trim().toLocaleLowerCase('zh-CN') === title.toLocaleLowerCase('zh-CN') && item.time === draft.time)) {
+      notify('相同时间已有这条提醒');
+      return false;
+    }
+    setState((current) => ({
+      ...current,
+      reminders: [...current.reminders, { id: uid('reminder'), title, time: draft.time, enabled: true, kind: draft.kind }],
+    }));
+    notify('已添加提醒');
+    return true;
+  }
+
+  function removeReminder(id: string) {
+    const index = state.reminders.findIndex((item) => item.id === id);
+    const removed = state.reminders[index];
+    if (!removed) return;
+    setState((current) => ({ ...current, reminders: current.reminders.filter((item) => item.id !== id) }));
+    notify(`已删除“${removed.title}”`, () => {
+      setState((current) => {
+        if (current.reminders.some((item) => item.id === removed.id)) return current;
+        const reminders = [...current.reminders];
+        reminders.splice(Math.min(index, reminders.length), 0, removed);
+        return { ...current, reminders };
+      });
+    });
   }
 
   async function enableNotifications() {
@@ -1543,7 +1713,7 @@ function App() {
   }
 
   const deskCommands: DeskCommand[] = [
-    { id: 'new-task', label: '新任务', description: '立即记录一件待办', keywords: '任务 待办 todo', icon: <ListTodo />, run: focusTaskInput },
+    { id: 'new-task', label: '新任务', description: '添加内容、日期与提醒', keywords: '任务 待办 todo', icon: <ListTodo />, run: () => setTaskCreateModalOpen(true) },
     { id: 'new-event', label: '新日程', description: '添加日期和时间', keywords: '日程 日历 安排 calendar', icon: <CalendarPlus />, run: openEventModal },
     { id: 'new-time-event', label: '时间事件', description: '累计日或目标倒计时', keywords: '纪念日 倒计时 累计 天数 countdown anniversary', icon: <CalendarClock />, run: () => openTimeEventModal() },
     { id: 'open-inbox', label: '打开收集箱', description: `${state.inbox.length} 条待整理内容`, keywords: '收集箱 临时 记录 inbox capture', icon: <Inbox />, run: () => setInboxOpen(true) },
@@ -1584,6 +1754,118 @@ function App() {
   const dateLabel = now.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'long' });
   const lockDateLabel = now.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
   const nextReminderTomorrow = nextReminder ? minutesFromTime(nextReminder.time) < now.getHours() * 60 + now.getMinutes() : false;
+  const railComponentControls: Record<DeskRailWidgetId, { label: string; description: string; checked: boolean; onChange: (checked: boolean) => void }> = {
+    quickActions: { label: '快捷操作', description: '常用功能入口', checked: state.preferences.showQuickActions, onChange: (checked) => updatePreferences({ showQuickActions: checked }) },
+    schedule: { label: '今日日程', description: '近期日程安排', checked: state.preferences.showSchedule, onChange: (checked) => updatePreferences({ showSchedule: checked }) },
+    focus: { label: '专注计时', description: '自定义专注时长', checked: state.preferences.showFocusTimer, onChange: (checked) => updatePreferences({ showFocusTimer: checked }) },
+    reminders: { label: '下一提醒', description: '上班、喝水与休息', checked: state.preferences.showReminders, onChange: (checked) => updatePreferences({ showReminders: checked }) },
+    tasks: { label: '今日任务', description: '待办与今日重点', checked: state.preferences.showTasks, onChange: (checked) => updatePreferences({ showTasks: checked }) },
+    notes: { label: '工作便签', description: '临时记录想法', checked: state.preferences.showNotes, onChange: (checked) => updatePreferences({ showNotes: checked }) },
+    calendar: { label: '月历', description: '查看月份与事项日期', checked: state.preferences.showCalendar, onChange: (checked) => updatePreferences({ showCalendar: checked }) },
+    calculator: { label: '快速计算', description: '无需离开桌面的计算器', checked: state.preferences.showCalculator, onChange: (checked) => updatePreferences({ showCalculator: checked }) },
+    worldClock: { label: '世界时钟', description: '跨地区工作时间', checked: state.preferences.showWorldClock, onChange: (checked) => updatePreferences({ showWorldClock: checked }) },
+    dailyOverview: { label: '今日概览', description: '汇总待办、日程与提醒', checked: state.preferences.showDailyOverview, onChange: (checked) => updatePreferences({ showDailyOverview: checked }) },
+  };
+
+  function renderRailWidget(id: DeskRailWidgetId) {
+    const dragProps = {
+      dragging: draggingWidgetId === id,
+      dropTarget: dragTargetWidgetId === id,
+      onDragStart: () => startDraggedRailWidget(id),
+      onDragMove: (_widgetId: DeskWidgetId, clientX: number, clientY: number) => moveDraggedRailWidget(id, clientX, clientY),
+      onDragEnd: () => finishDraggedRailWidget(id),
+    };
+    if (id === 'quickActions') return state.preferences.showQuickActions ? (
+      <WidgetFrame key={id} id={id} label="快捷操作" size={workspace.layout.widgets[id]} editing={layoutEditing} onChange={(next) => updateCurrentWidget(id, next)} {...dragProps}>
+        <QuickActionsCard actions={deskCommands} limit={widgetItemLimit(workspace.layout.widgets[id].height, 3, 6, 9)} onOpenAll={() => setCommandOpen(true)} />
+      </WidgetFrame>
+    ) : null;
+
+    if (id === 'schedule') return state.preferences.showSchedule ? (
+      <WidgetFrame key={id} id={id} label="今日日程" size={workspace.layout.widgets[id]} editing={layoutEditing} onChange={(next) => updateCurrentWidget(id, next)} {...dragProps}>
+        <ScheduleCard events={upcomingEvents} todayKey={todayKey} limit={widgetItemLimit(workspace.layout.widgets[id].height, 1, 3, 5)} onAdd={openEventModal} onRemove={removeEvent} />
+      </WidgetFrame>
+    ) : null;
+
+    if (id === 'focus') return state.preferences.showFocusTimer ? (
+      <WidgetFrame key={id} id={id} label="专注计时" size={workspace.layout.widgets[id]} editing={layoutEditing} onChange={(next) => updateCurrentWidget(id, next)} {...dragProps}>
+        <FocusTimerCard durationMinutes={focusDuration} remainingSeconds={focusRemaining} running={focusRunning} onPreset={setFocusPreset} onToggle={toggleFocus} onReset={resetFocus} />
+      </WidgetFrame>
+    ) : null;
+
+    if (id === 'reminders') return state.preferences.showReminders ? (
+      <WidgetFrame key={id} id={id} label="下一提醒" size={workspace.layout.widgets[id]} editing={layoutEditing} onChange={(next) => updateCurrentWidget(id, next)} {...dragProps}>
+        <section className="glass-panel reminder-card">
+          <div className="mini-heading"><span><BellRing aria-hidden="true" />下一提醒</span><button type="button" onClick={() => setReminderSettingsOpen(true)}>设置</button></div>
+          {nextReminder ? (
+            <div className="next-reminder">
+              <span className={`reminder-symbol ${nextReminder.kind}`}>{reminderIcons[nextReminder.kind]}</span>
+              <div><strong>{nextReminder.title}</strong><small>{nextReminderTomorrow ? '明天 ' : '今天 '}{nextReminder.time}</small></div>
+              <span className="reminder-count">{enabledReminderCount}</span>
+            </div>
+          ) : <div className="rail-empty">今天没有提醒</div>}
+        </section>
+      </WidgetFrame>
+    ) : null;
+
+    if (id === 'tasks') return state.preferences.showTasks ? (
+      <WidgetFrame key={id} id={id} label="今日任务" size={workspace.layout.widgets[id]} editing={layoutEditing} onChange={(next) => updateCurrentWidget(id, next)} {...dragProps}>
+        <section className="glass-panel tasks-card">
+          <div className="mini-heading"><span><ListTodo aria-hidden="true" />今日任务</span><small>{openTaskCount} 待完成</small></div>
+          <form className="quick-add" onSubmit={addTask}>
+            <input ref={taskInputRef} value={taskDraft} onChange={(event) => setTaskDraft(event.target.value)} placeholder="记录一个任务" aria-label="新任务" />
+            <button type="submit" aria-label="添加任务"><CirclePlus aria-hidden="true" /></button>
+          </form>
+          <div className="task-list">
+            {orderedTasks.slice(0, widgetItemLimit(workspace.layout.widgets[id].height, 3, 6, 10)).map((task) => (
+              <div className={`task-row${task.done ? ' done' : ''}${workspace.focusTaskId === task.id ? ' focused' : ''}`} key={task.id}>
+                <button className="task-check" type="button" onClick={() => toggleTask(task.id)} aria-label={task.done ? '标记未完成' : '标记完成'}>{task.done && <Check />}</button>
+                <button className="task-title-button" type="button" onClick={() => setTaskDetailId(task.id)} title={task.text} data-full-text={task.text} aria-label={`查看任务：${task.text}`}><span>{task.text}</span>{task.dueDate && <small className={task.dueDate < todayKey && !task.done ? 'overdue' : ''}>{task.dueDate === todayKey ? '今天' : task.dueDate.slice(5)}{task.reminderTime ? ` ${task.reminderTime}` : ''}</small>}</button>
+                <button className="task-focus" type="button" onClick={() => toggleFocusTask(task.id)} disabled={task.done} aria-label={workspace.focusTaskId === task.id ? '取消今日重点' : '设为今日重点'} title={workspace.focusTaskId === task.id ? '今日重点' : '设为今日重点'}><Star fill={workspace.focusTaskId === task.id ? 'currentColor' : 'none'} /></button>
+                <button className="task-delete" type="button" onClick={() => removeTask(task.id)} aria-label="删除任务"><Trash2 /></button>
+              </div>
+            ))}
+            {!workspace.tasks.length && <div className="rail-empty">今天没有任务</div>}
+          </div>
+        </section>
+      </WidgetFrame>
+    ) : null;
+
+    if (id === 'notes') return state.preferences.showNotes ? (
+      <WidgetFrame key={id} id={id} label="工作便签" size={workspace.layout.widgets[id]} editing={layoutEditing} onChange={(next) => updateCurrentWidget(id, next)} {...dragProps}>
+        <section className="glass-panel note-card">
+          <div className="mini-heading"><span><StickyNote aria-hidden="true" />工作便签</span><small>自动保存</small></div>
+          <textarea value={workspace.note} onChange={(event) => updateWorkspace((current) => ({ ...current, note: event.target.value }))} placeholder="临时记下一个想法…" aria-label="工作便签" />
+        </section>
+      </WidgetFrame>
+    ) : null;
+
+    if (id === 'calendar') return state.preferences.showCalendar ? (
+      <WidgetFrame key={id} id={id} label="月历" size={workspace.layout.widgets[id]} editing={layoutEditing} onChange={(next) => updateCurrentWidget(id, next)} {...dragProps}>
+        <MonthCalendarCard now={now} events={workspace.events} tasks={workspace.tasks} />
+      </WidgetFrame>
+    ) : null;
+
+    if (id === 'calculator') return state.preferences.showCalculator ? (
+      <WidgetFrame key={id} id={id} label="快速计算" size={workspace.layout.widgets[id]} editing={layoutEditing} onChange={(next) => updateCurrentWidget(id, next)} {...dragProps}>
+        <CalculatorCard />
+      </WidgetFrame>
+    ) : null;
+
+    if (id === 'worldClock') return state.preferences.showWorldClock ? (
+      <WidgetFrame key={id} id={id} label="世界时钟" size={workspace.layout.widgets[id]} editing={layoutEditing} onChange={(next) => updateCurrentWidget(id, next)} {...dragProps}>
+        <WorldClockCard now={now} selectedZoneIds={state.preferences.worldClockZones} limit={widgetItemLimit(workspace.layout.widgets[id].height, 2, 3, 5)} onConfigure={() => setWorldClockSettingsOpen(true)} />
+      </WidgetFrame>
+    ) : null;
+
+    if (id === 'dailyOverview') return state.preferences.showDailyOverview ? (
+      <WidgetFrame key={id} id={id} label="今日概览" size={workspace.layout.widgets[id]} editing={layoutEditing} onChange={(next) => updateCurrentWidget(id, next)} {...dragProps}>
+        <DailyOverviewCard openTaskCount={openTaskCount} todayEventCount={todayEventCount} nextReminderTime={nextReminder?.time || ''} focusTaskTitle={focusTaskTitle} />
+      </WidgetFrame>
+    ) : null;
+
+    return null;
+  }
 
   return (
     <div className={`desk-app theme-${state.preferences.scene}`}>
@@ -1644,6 +1926,7 @@ function App() {
           </span>
           <button className="text-button login-button" type="button" onClick={deskSync.user ? () => setSettingsOpen(true) : deskSync.login}>{deskSync.user ? deskSync.user.userName : deskSync.status === 'extension' ? '网页同步' : '登录同步'}</button>
           <button className="icon-button inbox-trigger" type="button" onClick={() => setInboxOpen(true)} aria-label={`收集箱，${state.inbox.length} 条待整理`} title="收集箱"><Inbox aria-hidden="true" />{state.inbox.length > 0 && <span>{Math.min(state.inbox.length, 99)}</span>}</button>
+          <button className={`text-button layout-header-button${layoutEditing ? ' active' : ''}`} type="button" onClick={() => layoutEditing ? setLayoutEditing(false) : enterLayoutEditing()} aria-label={layoutEditing ? '完成桌面布局调整' : '调整桌面布局和组件顺序'} aria-pressed={layoutEditing} title={layoutEditing ? '完成布局调整' : '调整桌面布局和组件顺序'}><AppWindow aria-hidden="true" /><span>{layoutEditing ? '完成布局' : '调整布局'}</span></button>
           <button className="icon-button" type="button" onClick={() => lockDesktop(true)} aria-label="全屏锁定桌面" title="全屏锁定桌面"><Lock aria-hidden="true" /></button>
           <button className="icon-button" type="button" onClick={() => setSettingsOpen(true)} aria-label="桌面设置"><Settings aria-hidden="true" /></button>
         </div>
@@ -1728,85 +2011,15 @@ function App() {
           </WidgetFrame>
           </div>
 
-          <aside className="today-rail" aria-label="今日工作区">
-            {state.preferences.showQuickActions && (
-              <WidgetFrame id="quickActions" label="快捷操作" size={workspace.layout.widgets.quickActions} editing={layoutEditing} onChange={(next) => updateCurrentWidget('quickActions', next)}>
-                <QuickActionsCard actions={deskCommands} limit={widgetItemLimit(workspace.layout.widgets.quickActions.height, 3, 6, 9)} onOpenAll={() => setCommandOpen(true)} />
-              </WidgetFrame>
-            )}
-
-            {state.preferences.showSchedule && (
-              <WidgetFrame id="schedule" label="今日日程" size={workspace.layout.widgets.schedule} editing={layoutEditing} onChange={(next) => updateCurrentWidget('schedule', next)}>
-                <ScheduleCard events={upcomingEvents} todayKey={todayKey} limit={widgetItemLimit(workspace.layout.widgets.schedule.height, 1, 3, 5)} onAdd={openEventModal} onRemove={removeEvent} />
-              </WidgetFrame>
-            )}
-
-            {state.preferences.showFocusTimer && (
-              <WidgetFrame id="focus" label="专注计时" size={workspace.layout.widgets.focus} editing={layoutEditing} onChange={(next) => updateCurrentWidget('focus', next)}>
-              <FocusTimerCard
-                durationMinutes={focusDuration}
-                remainingSeconds={focusRemaining}
-                running={focusRunning}
-                onPreset={setFocusPreset}
-                onToggle={toggleFocus}
-                onReset={resetFocus}
-              />
-              </WidgetFrame>
-            )}
-
-            {state.preferences.showReminders && (
-              <WidgetFrame id="reminders" label="下一提醒" size={workspace.layout.widgets.reminders} editing={layoutEditing} onChange={(next) => updateCurrentWidget('reminders', next)}>
-              <section className="glass-panel reminder-card">
-                <div className="mini-heading"><span><BellRing aria-hidden="true" />下一提醒</span><button type="button" onClick={() => setSettingsOpen(true)}>设置</button></div>
-                {nextReminder ? (
-                  <div className="next-reminder">
-                    <span className={`reminder-symbol ${nextReminder.kind}`}>{reminderIcons[nextReminder.kind]}</span>
-                    <div><strong>{nextReminder.title}</strong><small>{nextReminderTomorrow ? '明天 ' : '今天 '}{nextReminder.time}</small></div>
-                    <span className="reminder-count">{enabledReminderCount}</span>
-                  </div>
-                ) : <div className="rail-empty">今天没有提醒</div>}
-              </section>
-              </WidgetFrame>
-            )}
-
-            {state.preferences.showTasks && (
-              <WidgetFrame id="tasks" label="今日任务" size={workspace.layout.widgets.tasks} editing={layoutEditing} onChange={(next) => updateCurrentWidget('tasks', next)}>
-              <section className="glass-panel tasks-card">
-                <div className="mini-heading"><span><ListTodo aria-hidden="true" />今日任务</span><small>{openTaskCount} 待完成</small></div>
-                <form className="quick-add" onSubmit={addTask}>
-                  <input ref={taskInputRef} value={taskDraft} onChange={(event) => setTaskDraft(event.target.value)} placeholder="记录一个任务" aria-label="新任务" />
-                  <button type="submit" aria-label="添加任务"><CirclePlus aria-hidden="true" /></button>
-                </form>
-                <div className="task-list">
-                  {orderedTasks.slice(0, widgetItemLimit(workspace.layout.widgets.tasks.height, 3, 6, 10)).map((task) => (
-                    <div className={`task-row${task.done ? ' done' : ''}${workspace.focusTaskId === task.id ? ' focused' : ''}`} key={task.id}>
-                      <button className="task-check" type="button" onClick={() => toggleTask(task.id)} aria-label={task.done ? '标记未完成' : '标记完成'}>{task.done && <Check />}</button>
-                      <button className="task-title-button" type="button" onClick={() => setTaskDetailId(task.id)} title={task.text} data-full-text={task.text} aria-label={`查看任务：${task.text}`}><span>{task.text}</span>{task.dueDate && <small className={task.dueDate < todayKey && !task.done ? 'overdue' : ''}>{task.dueDate === todayKey ? '今天' : task.dueDate.slice(5)}{task.reminderTime ? ` ${task.reminderTime}` : ''}</small>}</button>
-                      <button className="task-focus" type="button" onClick={() => toggleFocusTask(task.id)} disabled={task.done} aria-label={workspace.focusTaskId === task.id ? '取消今日重点' : '设为今日重点'} title={workspace.focusTaskId === task.id ? '今日重点' : '设为今日重点'}><Star fill={workspace.focusTaskId === task.id ? 'currentColor' : 'none'} /></button>
-                      <button className="task-delete" type="button" onClick={() => removeTask(task.id)} aria-label="删除任务"><Trash2 /></button>
-                    </div>
-                  ))}
-                  {!workspace.tasks.length && <div className="rail-empty">今天没有任务</div>}
-                </div>
-              </section>
-              </WidgetFrame>
-            )}
-
-            {state.preferences.showNotes && (
-              <WidgetFrame id="notes" label="工作便签" size={workspace.layout.widgets.notes} editing={layoutEditing} onChange={(next) => updateCurrentWidget('notes', next)}>
-              <section className="glass-panel note-card">
-                <div className="mini-heading"><span><StickyNote aria-hidden="true" />工作便签</span><small>自动保存</small></div>
-                <textarea value={workspace.note} onChange={(event) => updateWorkspace((current) => ({ ...current, note: event.target.value }))} placeholder="临时记下一个想法…" aria-label="工作便签" />
-              </section>
-              </WidgetFrame>
-            )}
+          <aside className={`today-rail${draggingWidgetId ? ' is-widget-dragging' : ''}`} aria-label="今日工作区">
+            {workspace.layout.widgetOrder.map(renderRailWidget)}
           </aside>
         </div>
       </main>
 
       {layoutEditing && (
         <div className="layout-mode-bar" role="toolbar" aria-label="布局调整">
-          <span className="layout-mode-title"><AppWindow aria-hidden="true" /><span><strong>调整“{workspace.name}”布局</strong><small>手机端自动保持单列</small></span></span>
+          <span className="layout-mode-title"><AppWindow aria-hidden="true" /><span><strong>调整“{workspace.name}”布局</strong><small>拖动卡片顶部排序，手机端保持单列</small></span></span>
           <span className="layout-balance-control" role="group" aria-label="主区域宽度">
             {([
               ['sites', '网站优先'],
@@ -1821,7 +2034,11 @@ function App() {
         </div>
       )}
 
-      <footer className="desk-footer"><span>WyanDesk</span><span>{saveStatus === 'error' ? '保存失败，请导出备份' : saveStatus === 'saving' ? '正在保存…' : '已保存到当前浏览器'}</span></footer>
+      <footer className="desk-footer">
+        <span className="desk-footer-brand">WyanDesk</span>
+        <a className="desk-filing" href="https://beian.miit.gov.cn/" target="_blank" rel="noreferrer" aria-label="鄂ICP备2023002649号-3，打开工业和信息化部备案管理系统">鄂ICP备2023002649号-3</a>
+        <span className="desk-save-status">{saveStatus === 'error' ? '保存失败，请导出备份' : saveStatus === 'saving' ? '正在保存…' : '已保存到当前浏览器'}</span>
+      </footer>
 
       {settingsOpen && (
         <div className="drawer-layer">
@@ -1849,67 +2066,38 @@ function App() {
             </section>
 
             <section className="settings-section">
-              <div className="settings-title"><AppWindow /><div><strong>桌面组件</strong><small>隐藏不会删除数据</small></div></div>
+              <div className="settings-title"><AppWindow /><div><strong>桌面组件</strong><small>两列排列，隐藏不会删除数据</small></div></div>
               <button className="layout-edit-trigger" type="button" onClick={enterLayoutEditing}><AppWindow aria-hidden="true" /><span><strong>调整卡片布局</strong><small>宽度、高度与主区域比例</small></span><ChevronRight aria-hidden="true" /></button>
               <SettingToggle label="紧凑网站卡片" description="同一屏显示更多网站" checked={state.preferences.compactShortcuts} onChange={(checked) => updatePreferences({ compactShortcuts: checked })} />
-              <SettingToggle label="快捷操作" checked={state.preferences.showQuickActions} onChange={(checked) => updatePreferences({ showQuickActions: checked })} />
-              <SettingToggle label="今日日程" checked={state.preferences.showSchedule} onChange={(checked) => updatePreferences({ showSchedule: checked })} />
-              <SettingToggle label="时间事件" description={state.timeEvents.length ? `${state.timeEvents.length} 个累计或倒计时` : '通过命令中心添加后显示'} checked={state.preferences.showTimeEvents} onChange={(checked) => updatePreferences({ showTimeEvents: checked })} />
-              <SettingToggle label="专注计时" checked={state.preferences.showFocusTimer} onChange={(checked) => updatePreferences({ showFocusTimer: checked })} />
-              <SettingToggle label="最近使用" checked={state.preferences.showRecent} onChange={(checked) => updatePreferences({ showRecent: checked })} />
-              <SettingToggle label="今日任务" checked={state.preferences.showTasks} onChange={(checked) => updatePreferences({ showTasks: checked })} />
-              <SettingToggle label="工作便签" checked={state.preferences.showNotes} onChange={(checked) => updatePreferences({ showNotes: checked })} />
-              <SettingToggle label="时间提醒" checked={state.preferences.showReminders} onChange={(checked) => updatePreferences({ showReminders: checked })} />
-            </section>
-
-            <section className="settings-section">
-              <div className="settings-title"><LockKeyhole /><div><strong>桌面锁屏</strong><small>临时遮挡当前网页中的私人内容</small></div></div>
-              <div className="auto-lock-row">
-                <span>空闲自动锁定</span>
-                <div className="segmented-control auto-lock-control" aria-label="空闲自动锁定时间">
-                  {[0, 5, 15, 30].map((minutes) => (
-                    <button key={minutes} className={state.preferences.autoLockMinutes === minutes ? 'active' : ''} type="button" aria-pressed={state.preferences.autoLockMinutes === minutes} onClick={() => updatePreferences({ autoLockMinutes: minutes })}>
-                      {minutes === 0 ? '关闭' : `${minutes} 分`}
-                    </button>
-                  ))}
-                </div>
+              <div className="component-settings-heading"><strong>右侧工作区</strong><small>用箭头调整卡片先后顺序</small></div>
+              <div className="component-settings-grid">
+                {workspace.layout.widgetOrder.map((id, index) => {
+                  const item = railComponentControls[id];
+                  return (
+                    <ComponentSettingCard
+                      key={id}
+                      label={item.label}
+                      description={item.description}
+                      checked={item.checked}
+                      onChange={item.onChange}
+                      onMoveUp={() => moveCurrentRailWidget(id, -1)}
+                      onMoveDown={() => moveCurrentRailWidget(id, 1)}
+                      moveUpDisabled={index === 0}
+                      moveDownDisabled={index === workspace.layout.widgetOrder.length - 1}
+                      onConfigure={id === 'reminders'
+                        ? () => { setSettingsOpen(false); setReminderSettingsOpen(true); }
+                        : id === 'worldClock'
+                          ? () => { setSettingsOpen(false); setWorldClockSettingsOpen(true); }
+                          : undefined}
+                    />
+                  );
+                })}
               </div>
-              <label className="lock-message-field">
-                <span><strong>锁屏提示</strong><small>留空则不显示，最多 48 个字</small></span>
-                <input value={state.preferences.lockMessage} onChange={(event) => updatePreferences({ lockMessage: event.target.value.slice(0, 48) })} maxLength={48} placeholder="例如：专注一下，慢慢来" />
-              </label>
-              <div className="lock-security-row">
-                <span><strong>本地解锁密码</strong><small>{lockPinEnabled ? '已启用，仅保存在当前浏览器' : '默认关闭'}</small></span>
-                {lockPinEnabled ? (
-                  <span className="lock-security-actions"><button type="button" onClick={() => setLockPinMode('change')}>修改</button><button type="button" onClick={() => setLockPinMode('disable')}>关闭</button></span>
-                ) : <button type="button" onClick={() => setLockPinMode('create')}>启用</button>}
+              <div className="component-settings-heading secondary"><strong>顶部内容</strong><small>固定在网站卡片上方</small></div>
+              <div className="component-settings-grid auxiliary">
+                <ComponentSettingCard label="最近使用" description="快速返回常用网站" checked={state.preferences.showRecent} onChange={(checked) => updatePreferences({ showRecent: checked })} />
+                <ComponentSettingCard label="时间事件" description={state.timeEvents.length ? `${state.timeEvents.length} 个累计或倒计时` : '添加后才显示'} checked={state.preferences.showTimeEvents} onChange={(checked) => updatePreferences({ showTimeEvents: checked })} />
               </div>
-              <SettingToggle label="锁屏活动记录" description="记录页面内操作与切屏，不保存输入内容" checked={state.preferences.lockActivityEnabled} onChange={(checked) => updatePreferences({ lockActivityEnabled: checked })} />
-              <div className="lock-activity-setting-row">
-                <span><strong>{lockActivityCount ? `${lockActivityCount} 次本地活动` : '还没有活动记录'}</strong><small>{latestLockActivity ? `最近 ${new Date(latestLockActivity.lastAt).toLocaleString('zh-CN', { hour12: false })}` : '只保存在当前浏览器'}</small></span>
-                <button type="button" disabled={!lockActivityLog.length} onClick={() => { setSettingsOpen(false); setLockActivityPanel('history'); }}>查看记录</button>
-              </div>
-              <button className="lock-now-button" type="button" onClick={() => lockDesktop(true)}><Lock />全屏锁定桌面</button>
-              <p className="settings-hint">活动记录不包含具体按键、鼠标位置或其他应用；网页锁屏仍不能替代系统锁屏。</p>
-            </section>
-
-            <section className="settings-section">
-              <div className="settings-title"><Bell /><div><strong>时间提醒</strong><small>页面打开时生效</small></div></div>
-              <div className="reminder-settings">
-                {state.reminders.map((reminder) => (
-                  <div className="reminder-setting-row" key={reminder.id}>
-                    <button className={`mini-switch${reminder.enabled ? ' active' : ''}`} type="button" onClick={() => updateReminder(reminder.id, { enabled: !reminder.enabled })} aria-label={`${reminder.enabled ? '关闭' : '开启'}${reminder.title}`}><i /></button>
-                    <span className={`reminder-symbol ${reminder.kind}`}>{reminderIcons[reminder.kind]}</span>
-                    <strong>{reminder.title}</strong>
-                    <input type="time" value={reminder.time} onChange={(event) => updateReminder(reminder.id, { time: event.target.value })} aria-label={`${reminder.title}时间`} />
-                  </div>
-                ))}
-              </div>
-              {state.preferences.systemNotifications ? (
-                <button className="notification-button active" type="button" onClick={() => updatePreferences({ systemNotifications: false })}><BellRing />系统通知已开启</button>
-              ) : (
-                <button className="notification-button" type="button" onClick={enableNotifications}><Bell />开启系统通知</button>
-              )}
             </section>
 
             <section className="settings-section compact-section">
@@ -1941,30 +2129,66 @@ function App() {
               <p className="settings-hint">同步服务使用 WyanHub 统一登录；删除云端数据不会删除当前浏览器里的桌面。</p>
             </section>
 
-            {installPrompt && (
-              <section className="settings-section">
-                <div className="settings-title"><AppWindow /><div><strong>安装微言桌面</strong><small>像独立应用一样快速打开</small></div></div>
-                <button className="install-app-button" type="button" onClick={installDeskApp}><Download />安装到桌面</button>
-                <p className="settings-hint">安装后仍使用同一套本地数据，不会增加额外账号或弹窗。</p>
-              </section>
-            )}
-
             <section className="settings-section">
-              <div className="settings-title"><CalendarDays /><div><strong>日历交换</strong><small>当前“{workspace.name}”桌面</small></div></div>
-              <div className="backup-actions">
-                <button type="button" onClick={exportCalendar}><Download />导出 ICS</button>
-                <label><input type="file" accept="text/calendar,.ics" onChange={importCalendar} /><FileUp />导入 ICS</label>
+              <div className="settings-title"><LockKeyhole /><div><strong>桌面锁屏</strong><small>临时遮挡当前网页中的私人内容</small></div></div>
+              <div className="auto-lock-row">
+                <span>空闲自动锁定</span>
+                <div className="segmented-control auto-lock-control" aria-label="空闲自动锁定时间">
+                  {[0, 5, 15, 30].map((minutes) => (
+                    <button key={minutes} className={state.preferences.autoLockMinutes === minutes ? 'active' : ''} type="button" aria-pressed={state.preferences.autoLockMinutes === minutes} onClick={() => updatePreferences({ autoLockMinutes: minutes })}>
+                      {minutes === 0 ? '关闭' : `${minutes} 分`}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <p className="settings-hint">导出包含日程和设置了日期的未完成任务；导入会自动跳过重复日程。</p>
+              <label className="lock-message-field">
+                <span><strong>锁屏提示</strong><small>留空则不显示，最多 48 个字</small></span>
+                <input value={state.preferences.lockMessage} onChange={(event) => updatePreferences({ lockMessage: event.target.value.slice(0, 48) })} maxLength={48} placeholder="例如：专注一下，慢慢来" />
+              </label>
+              <div className="lock-security-row">
+                <span><strong>本地解锁密码</strong><small>{lockPinEnabled ? '已启用，仅保存在当前浏览器' : '默认关闭'}</small></span>
+                {lockPinEnabled ? (
+                  <span className="lock-security-actions"><button type="button" onClick={() => setLockPinMode('change')}>修改</button><button type="button" onClick={() => setLockPinMode('disable')}>关闭</button></span>
+                ) : <button type="button" onClick={() => setLockPinMode('create')}>启用</button>}
+              </div>
+              <SettingToggle label="锁屏活动记录" description="记录页面内操作与切屏，不保存输入内容" checked={state.preferences.lockActivityEnabled} onChange={(checked) => updatePreferences({ lockActivityEnabled: checked })} />
+              <div className="lock-activity-setting-row">
+                <span><strong>{lockActivityCount ? `${lockActivityCount} 次本地活动` : '还没有活动记录'}</strong><small>{latestLockActivity ? `最近 ${new Date(latestLockActivity.lastAt).toLocaleString('zh-CN', { hour12: false })}` : '只保存在当前浏览器'}</small></span>
+                <button type="button" disabled={!lockActivityLog.length} onClick={() => { setSettingsOpen(false); setLockActivityPanelOpen(true); }}>查看记录</button>
+              </div>
+              <button className="lock-now-button" type="button" onClick={() => lockDesktop(true)}><Lock />全屏锁定桌面</button>
+              <p className="settings-hint">活动记录不包含具体按键、鼠标位置或其他应用；网页锁屏仍不能替代系统锁屏。</p>
             </section>
 
-            <section className="settings-section">
-              <div className="settings-title"><FileJson /><div><strong>桌面模板</strong><small>分享网站与分类，不带私人内容</small></div></div>
-              <div className="backup-actions">
-                <button type="button" onClick={exportWorkspaceTemplate}><Download />导出模板</button>
-                <label><input type="file" accept="application/json,.json" onChange={importWorkspaceTemplate} /><FileUp />导入模板</label>
+            <section className="settings-section settings-tools-section">
+              <div className="settings-title"><Wrench /><div><strong>更多工具</strong><small>低频功能集中放置，按需使用</small></div></div>
+              <div className="settings-tool-grid">
+                {installPrompt && (
+                  <article className="settings-tool-card">
+                    <div className="settings-tool-heading"><span><AppWindow /></span><div><strong>安装桌面</strong><small>像应用一样打开</small></div></div>
+                    <div className="settings-tool-actions single"><button type="button" onClick={installDeskApp}><Download />安装</button></div>
+                  </article>
+                )}
+                <article className="settings-tool-card">
+                  <div className="settings-tool-heading"><span><Keyboard /></span><div><strong>键盘操作</strong><small>搜索、命令与弹层</small></div></div>
+                  <div className="settings-tool-actions single"><button type="button" onClick={() => setKeyboardHelpOpen(true)}>查看快捷键</button></div>
+                </article>
+                <article className="settings-tool-card">
+                  <div className="settings-tool-heading"><span><CalendarDays /></span><div><strong>日历交换</strong><small>当前“{workspace.name}”桌面</small></div></div>
+                  <div className="settings-tool-actions">
+                    <button type="button" onClick={exportCalendar}><Download />导出</button>
+                    <label><input type="file" accept="text/calendar,.ics" onChange={importCalendar} /><FileUp />导入</label>
+                  </div>
+                </article>
+                <article className="settings-tool-card">
+                  <div className="settings-tool-heading"><span><FileJson /></span><div><strong>桌面模板</strong><small>仅分享网站与分类</small></div></div>
+                  <div className="settings-tool-actions">
+                    <button type="button" onClick={exportWorkspaceTemplate}><Download />导出</button>
+                    <label><input type="file" accept="application/json,.json" onChange={importWorkspaceTemplate} /><FileUp />导入</label>
+                  </div>
+                </article>
               </div>
-              <p className="settings-hint">模板不会包含任务、便签、日程或最近使用。公开只读分享保持关闭，避免意外暴露个人内容。</p>
+              <p className="settings-hint">日历导入会自动跳过重复日程；桌面模板不会包含任务、便签、日程或最近使用。</p>
             </section>
 
             <section className="settings-section">
@@ -1976,11 +2200,6 @@ function App() {
               {recoveryAvailable && <button className="recovery-download" type="button" onClick={exportRecoveryData}><Download />下载异常数据副本</button>}
               <label className="bookmark-import"><input type="file" accept="text/html,.html,.htm" onChange={importBrowserBookmarks} /><BookMarked /><span><strong>导入书签 HTML（兼容方式）</strong><small>安装扩展后，可在扩展按钮里一键双向迁移书签</small></span><FileUp /></label>
               <p className="settings-hint">备份包含网站、分类、任务、便签和桌面设置。HTML 适合跨浏览器迁移；扩展直连导入只追加并自动去重。</p>
-            </section>
-
-            <section className="settings-section compact-section">
-              <div className="settings-title"><Keyboard /><div><strong>键盘操作</strong><small>搜索、命令与弹层</small></div></div>
-              <button className="full-quiet-button" type="button" onClick={() => setKeyboardHelpOpen(true)}>查看快捷键</button>
             </section>
 
             <section className="settings-section about-section">
@@ -2062,6 +2281,39 @@ function App() {
         />
       )}
 
+      {taskCreateModalOpen && (
+        <TaskCreateModal
+          todayKey={todayKey}
+          onClose={() => setTaskCreateModalOpen(false)}
+          onSave={addTaskDetails}
+        />
+      )}
+
+      {reminderSettingsOpen && (
+        <ReminderSettingsModal
+          reminders={state.reminders}
+          systemNotifications={state.preferences.systemNotifications}
+          onAdd={addReminder}
+          onClose={() => setReminderSettingsOpen(false)}
+          onDelete={removeReminder}
+          onEnableNotifications={() => void enableNotifications()}
+          onDisableNotifications={() => updatePreferences({ systemNotifications: false })}
+          onUpdate={updateReminder}
+        />
+      )}
+
+      {worldClockSettingsOpen && (
+        <WorldClockSettingsModal
+          selectedZoneIds={state.preferences.worldClockZones}
+          onClose={() => setWorldClockSettingsOpen(false)}
+          onSave={(worldClockZones) => {
+            updatePreferences({ worldClockZones });
+            setWorldClockSettingsOpen(false);
+            notify('世界时钟已更新');
+          }}
+        />
+      )}
+
       {selectedTask && (
         <TaskDetailsModal
           task={selectedTask}
@@ -2107,7 +2359,7 @@ function App() {
 
       {keyboardHelpOpen && <KeyboardHelpModal onClose={() => setKeyboardHelpOpen(false)} />}
       {lockPinMode && <LockPinModal mode={lockPinMode} onClose={() => setLockPinMode(null)} onChanged={(enabled) => { setLockPinEnabled(enabled); setLockPinMode(null); notify(enabled ? '解锁密码已启用' : '解锁密码已关闭'); }} />}
-      {lockActivityPanel && <LockActivityModal mode={lockActivityPanel} entries={lockActivityLog} sessionId={lockActivityReportSessionId} onClose={() => setLockActivityPanel(null)} onClear={clearLockActivityHistory} onShowHistory={() => setLockActivityPanel('history')} />}
+      {lockActivityPanelOpen && <LockActivityModal entries={lockActivityLog} onClose={() => setLockActivityPanelOpen(false)} onClear={clearLockActivityHistory} />}
 
       {trustPanel && <TrustCenterModal initialPanel={trustPanel} version={appVersion} signedIn={Boolean(deskSync.user)} onClose={() => { setTrustPanel(null); setSettingsOpen(true); }} onLogin={deskSync.login} onSubmitFeedback={(message) => deskSync.submitFeedback(message, appVersion)} />}
 
@@ -2121,11 +2373,11 @@ function App() {
       </div>
 
       {isLocked && (
-        <section className="lock-screen" role="dialog" aria-modal="true" aria-labelledby="lockScreenTitle">
+        <section className={`lock-screen${unlockPending ? ' is-unlocking' : ''}`} role="dialog" aria-modal="true" aria-labelledby="lockScreenTitle" aria-busy={unlockPending}>
           <header className="lock-topbar">
             <span className="lock-brand"><i>W</i><span><strong>微言桌面</strong><small>WyanDesk</small></span></span>
-            {isFullscreen ? (
-              <button className="lock-fullscreen-exit" data-lock-action type="button" onClick={unlockDesktop} aria-label="退出全屏并返回桌面"><Minimize2 aria-hidden="true" /><span>退出全屏</span></button>
+            {isFullscreen || unlockPending ? (
+              <button className="lock-fullscreen-exit" data-lock-action type="button" onClick={unlockDesktop} disabled={unlockPending} aria-label={unlockPending ? '正在退出全屏并返回桌面' : '退出全屏并返回桌面'}><Minimize2 aria-hidden="true" /><span>{unlockPending ? '正在退出' : '退出全屏'}</span></button>
             ) : (
               <span className="lock-status"><LockKeyhole aria-hidden="true" />桌面已锁定</span>
             )}
@@ -2138,13 +2390,13 @@ function App() {
             {lockPinEnabled ? (
               <form className="unlock-pin-form" data-lock-action onSubmit={submitUnlockPin}>
                 <div className="unlock-pin-control"><LockKeyhole aria-hidden="true" /><input ref={unlockPinRef} type="password" inputMode="numeric" autoComplete="current-password" value={unlockPin} onChange={(event) => setUnlockPin(event.target.value.replace(/\D/g, '').slice(0, 8))} maxLength={8} placeholder="输入解锁密码" aria-label="解锁密码" /></div>
-                <button type="submit" disabled={unlocking || unlockPin.length < 4}>{unlocking ? '验证中…' : '进入桌面'}</button>
+                <button type="submit" disabled={unlocking || unlockPending || unlockPin.length < 4}>{unlocking ? '验证中…' : unlockPending ? '正在返回…' : '进入桌面'}</button>
                 {unlockError && <p role="alert">{unlockError}</p>}
               </form>
             ) : (
-              <button ref={unlockButtonRef} className="unlock-button" data-lock-action type="button" onClick={unlockDesktop}>
+              <button ref={unlockButtonRef} className="unlock-button" data-lock-action type="button" onClick={unlockDesktop} disabled={unlockPending}>
                 <Unlock aria-hidden="true" />
-                <span><strong>进入桌面</strong><small>按空格键或回车</small></span>
+                <span><strong>{unlockPending ? '正在返回桌面' : '进入桌面'}</strong><small>{unlockPending ? '正在恢复浏览器窗口' : '按空格键或回车'}</small></span>
               </button>
             )}
           </div>
@@ -2168,6 +2420,32 @@ function SettingToggle({ label, description, checked, onChange }: SettingToggleP
       <span><strong>{label}</strong>{description && <small>{description}</small>}</span>
       <span className={`toggle-track${checked ? ' active' : ''}`}><i /></span>
     </button>
+  );
+}
+
+interface ComponentSettingCardProps extends SettingToggleProps {
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  moveUpDisabled?: boolean;
+  moveDownDisabled?: boolean;
+  onConfigure?: () => void;
+}
+
+function ComponentSettingCard({ label, description, checked, onChange, onMoveUp, onMoveDown, moveUpDisabled, moveDownDisabled, onConfigure }: ComponentSettingCardProps) {
+  const sortable = Boolean(onMoveUp && onMoveDown);
+  return (
+    <div className={`component-setting-card${checked ? ' enabled' : ''}`}>
+      <button className="component-setting-switch" type="button" role="switch" aria-checked={checked} onClick={() => onChange(!checked)}>
+        <span><strong>{label}</strong>{description && <small>{description}</small>}</span>
+        <span className={`toggle-track${checked ? ' active' : ''}`}><i /></span>
+      </button>
+      {(sortable || onConfigure) && (
+        <div className="component-setting-actions">
+          {sortable && <span role="group" aria-label={`${label}排序`}><button type="button" onClick={onMoveUp} disabled={moveUpDisabled} aria-label={`上移${label}`} title="上移"><ChevronUp /></button><button type="button" onClick={onMoveDown} disabled={moveDownDisabled} aria-label={`下移${label}`} title="下移"><ChevronDown /></button></span>}
+          {onConfigure && <button className="component-configure" type="button" onClick={onConfigure}><Settings />设置</button>}
+        </div>
+      )}
+    </div>
   );
 }
 

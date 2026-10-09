@@ -4,6 +4,7 @@ import { createBlankWorkspace } from './workspaces';
 import { normalizeFocusMinutes } from './focusTimer';
 import { normalizeTimeEvents } from './timeEvents';
 import { normalizeWorkspaceLayout } from './widgetLayout';
+import { normalizeWorldClockZones } from './worldClock';
 
 const STORAGE_KEY = 'wyandesk.state.v1';
 const RECOVERY_KEY = 'wyandesk.state.recovery.v1';
@@ -172,6 +173,7 @@ export function migrateDeskState(value: unknown): DeskState {
         ? (preferences as Partial<DeskState['preferences']>).lockActivityEnabled!
         : true,
       focusDurationMinutes: normalizeFocusMinutes((preferences as Partial<DeskState['preferences']>).focusDurationMinutes),
+      worldClockZones: normalizeWorldClockZones((preferences as Partial<DeskState['preferences']>).worldClockZones),
       lockMessage: typeof (preferences as Partial<DeskState['preferences']>).lockMessage === 'string'
         ? (preferences as Partial<DeskState['preferences']>).lockMessage!.slice(0, 48)
         : '',

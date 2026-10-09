@@ -138,6 +138,7 @@ describe('migrateDeskState', () => {
     expect(migrated.workspaces[0].layout.railWidth).toBe('widgets');
     expect(migrated.workspaces[0].layout.widgets.tasks).toEqual({ width: 'wide', height: 'tall' });
     expect(migrated.workspaces[0].layout.widgets.notes).toEqual({ width: 'standard', height: 'standard' });
+    expect(migrated.workspaces[0].layout.widgetOrder).toEqual(['quickActions', 'schedule', 'tasks', 'reminders', 'focus', 'notes', 'calendar', 'calculator', 'worldClock', 'dailyOverview']);
   });
 
   it('defaults lock activity records on while preserving an explicit opt-out', () => {
@@ -176,6 +177,29 @@ describe('migrateDeskState', () => {
 
     expect(valid.preferences.focusDurationMinutes).toBe(45);
     expect(invalid.preferences.focusDurationMinutes).toBe(25);
+  });
+
+  it('keeps new optional widgets hidden unless the user enables them', () => {
+    const defaults = migrateDeskState({
+      version: 8,
+      workspaces: [{ id: 'work', name: '工作', categories: ['常用'], shortcuts: [], tasks: [], note: '' }],
+      preferences: {},
+    });
+    const enabled = migrateDeskState({
+      version: 8,
+      workspaces: [{ id: 'work', name: '工作', categories: ['常用'], shortcuts: [], tasks: [], note: '' }],
+      preferences: { showCalendar: true, showCalculator: true, showWorldClock: true, worldClockZones: ['Asia/Tokyo'], showDailyOverview: true },
+    });
+
+    expect(defaults.preferences.showCalendar).toBe(false);
+    expect(defaults.preferences.showCalculator).toBe(false);
+    expect(defaults.preferences.showWorldClock).toBe(false);
+    expect(defaults.preferences.showDailyOverview).toBe(false);
+    expect(enabled.preferences.showCalendar).toBe(true);
+    expect(enabled.preferences.showCalculator).toBe(true);
+    expect(enabled.preferences.showWorldClock).toBe(true);
+    expect(enabled.preferences.worldClockZones).toEqual(['Asia/Tokyo']);
+    expect(enabled.preferences.showDailyOverview).toBe(true);
   });
 });
 

@@ -15,8 +15,10 @@ describe('workspace helpers', () => {
     const copy = duplicateWorkspace(source, 'copy', '工作副本');
     copy.tasks[0].text = '已修改';
     copy.layout.widgets.tasks.height = 'tall';
+    copy.layout.widgetOrder.reverse();
     expect(source.tasks[0].text).toBe('任务');
     expect(source.layout.widgets.tasks.height).toBe('standard');
+    expect(source.layout.widgetOrder).toEqual(['quickActions', 'schedule', 'tasks', 'reminders', 'focus', 'notes', 'calendar', 'calculator', 'worldClock', 'dailyOverview']);
   });
 
   it('moves a workspace only inside valid bounds', () => {

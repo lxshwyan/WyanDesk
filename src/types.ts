@@ -1,7 +1,8 @@
 export type SceneId = 'dawn' | 'ocean' | 'night' | 'cyber';
 export type SearchEngine = 'baidu' | 'bing';
 
-export type DeskWidgetId = 'shortcuts' | 'quickActions' | 'schedule' | 'focus' | 'reminders' | 'tasks' | 'notes';
+export type DeskWidgetId = 'shortcuts' | 'quickActions' | 'schedule' | 'focus' | 'reminders' | 'tasks' | 'notes' | 'calendar' | 'calculator' | 'worldClock' | 'dailyOverview';
+export type DeskRailWidgetId = Exclude<DeskWidgetId, 'shortcuts'>;
 export type DeskWidgetWidth = 'standard' | 'wide';
 export type DeskWidgetHeight = 'compact' | 'standard' | 'tall';
 export type DeskRailWidth = 'sites' | 'balanced' | 'widgets';
@@ -14,6 +15,7 @@ export interface DeskWidgetSize {
 export interface DeskWorkspaceLayout {
   railWidth: DeskRailWidth;
   widgets: Record<DeskWidgetId, DeskWidgetSize>;
+  widgetOrder: DeskRailWidgetId[];
 }
 
 export interface Shortcut {
@@ -56,7 +58,7 @@ export interface DeskReminder {
   title: string;
   time: string;
   enabled: boolean;
-  kind: 'work' | 'water' | 'meal' | 'rest';
+  kind: 'work' | 'water' | 'meal' | 'rest' | 'custom';
 }
 
 export interface DeskEvent {
@@ -90,6 +92,11 @@ export interface DeskPreferences {
   showFocusTimer: boolean;
   focusDurationMinutes: number;
   showSchedule: boolean;
+  showCalendar: boolean;
+  showCalculator: boolean;
+  showWorldClock: boolean;
+  worldClockZones: string[];
+  showDailyOverview: boolean;
   showTimeEvents: boolean;
   showRecent: boolean;
   systemNotifications: boolean;

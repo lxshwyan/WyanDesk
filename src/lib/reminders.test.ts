@@ -21,4 +21,10 @@ describe('reminders', () => {
     expect(reminderIsDue(reminders[1], new Date('2026-10-05T10:00:20'))).toBe(true);
     expect(reminderIsDue(reminders[2], new Date('2026-10-05T11:00:00'))).toBe(false);
   });
+
+  it('schedules a custom reminder with the same timing rules', () => {
+    const custom: DeskReminder = { id: 'medicine', title: '吃药', time: '20:30', enabled: true, kind: 'custom' };
+    expect(getNextReminder([...reminders, custom], new Date('2026-10-05T19:00:00'))?.id).toBe('medicine');
+    expect(reminderIsDue(custom, new Date('2026-10-05T20:30:10'))).toBe(true);
+  });
 });

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "微言桌面 WyanDesk",
-  "version": "0.2.5",
+  "version": "0.2.10",
   "description": "把微言桌面设为新标签页，并快速收藏当前网页或窗口标签组。",
   "permissions": ["activeTab", "storage"],
   "optional_permissions": ["tabs", "bookmarks"],

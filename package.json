@@ -1,7 +1,7 @@
 {
   "name": "wyan-desk",
   "private": true,
-  "version": "0.2.5",
+  "version": "0.2.10",
   "description": "Local-first browser desktop for bookmarks, tasks, notes, schedules, focus sessions and reminders.",
   "license": "MIT",
   "homepage": "https://desk.wyanhub.com",

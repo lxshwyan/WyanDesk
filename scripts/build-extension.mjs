@@ -12,6 +12,13 @@ await rm(join(output, 'app', 'downloads'), { recursive: true, force: true });
 for (const file of ['manifest.json', 'popup.html', 'popup.css', 'popup.js']) {
   await copyFile(join(root, 'extension', file), join(output, file));
 }
+
+const packageMetadata = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'));
+const extensionManifestPath = join(output, 'manifest.json');
+const extensionManifest = JSON.parse(await readFile(extensionManifestPath, 'utf8'));
+extensionManifest.version = packageMetadata.version;
+await writeFile(extensionManifestPath, `${JSON.stringify(extensionManifest, null, 2)}\n`, 'utf8');
+
 for (const size of [16, 32, 48, 128]) {
   await copyFile(join(root, 'extension', 'icons', `icon-${size}.png`), join(output, 'icons', `icon-${size}.png`));
 }

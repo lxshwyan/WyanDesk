@@ -15,7 +15,7 @@
 
 ![WyanDesk overview](docs/images/wyandesk-overview.png)
 
-> The public site is currently waiting for its domain filing and certificate path to become fully active. If it is temporarily unavailable, run the app locally; local mode requires no account or backend.
+> The official site is live. Its footer shows the site filing number and links to the MIIT filing system. Local mode still requires no account or backend.
 
 Repositories: [GitHub primary](https://github.com/lxshwyan/WyanDesk) · [Gitee China mirror](https://gitee.com/lxsh_wyan/WyanDesk). Development, issues, and pull requests are tracked on GitHub; Gitee is provided for access and distribution in China.
 
@@ -23,9 +23,9 @@ Repositories: [GitHub primary](https://github.com/lxshwyan/WyanDesk) · [Gitee C
 
 - Local-first data with optional account sync on the official deployment.
 - Categorized bookmarks, multi-workspace layouts, quick commands, and website groups.
-- Tasks, schedules, notes, configurable focus sessions, time events, and workday reminders.
-- Adjustable card sizes, multiple 3D-style scenes, custom backgrounds, and reduced motion.
-- Full-screen privacy lock with optional PIN and local-only activity summaries.
+- Tasks with either a quick dialog or inline capture, schedules, notes, configurable focus sessions, time events, default workday reminders, custom reminders, and opt-in month-calendar, calculator, world-clock, and daily-overview widgets. The overview reuses existing desktop data; world clocks use browser time-zone data only and request no location or external API.
+- A prominent header shortcut for layout editing, a task-first default widget order, two-column widget controls with smooth pointer-following per-workspace drag ordering, adjustable card sizes, frequency-based compact settings, multiple 3D-style scenes, custom backgrounds, reduced motion, and automatic high-resolution display scaling.
+- Smooth full-screen privacy lock transitions with optional PIN and local-only activity summaries that stay silent after unlock and open only on request from Settings.
 - Browser bookmark, ICS, desktop backup, and privacy-safe template import/export.
 - Installable PWA and a Chrome / Edge new-tab extension with optional permissions.
 

@@ -34,6 +34,7 @@ export function duplicateWorkspace(source: DeskWorkspace, id: string, name: stri
     recentShortcutIds: [...source.recentShortcutIds],
     layout: {
       ...source.layout,
+      widgetOrder: [...source.layout.widgetOrder],
       widgets: Object.fromEntries(Object.entries(source.layout.widgets).map(([id, size]) => [id, { ...size }])) as DeskWorkspace['layout']['widgets'],
     },
   };
