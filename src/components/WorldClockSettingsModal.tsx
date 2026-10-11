@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Check, Clock3, Globe2, X } from 'lucide-react';
 import { worldClockOptions } from '../lib/worldClock';
+import { ManagedLayer } from './ManagedLayer';
 
 interface WorldClockSettingsModalProps {
   selectedZoneIds: string[];
@@ -20,7 +21,7 @@ export function WorldClockSettingsModal({ selectedZoneIds, onClose, onSave }: Wo
   }
 
   return (
-    <div className="modal-layer" role="presentation">
+    <ManagedLayer className="modal-layer" onEscape={onClose}>
       <button className="modal-backdrop" type="button" onClick={onClose} aria-label="关闭世界时钟设置" />
       <section className="shortcut-modal world-clock-settings-modal" role="dialog" aria-modal="true" aria-labelledby="worldClockSettingsTitle">
         <div className="modal-heading">
@@ -52,6 +53,6 @@ export function WorldClockSettingsModal({ selectedZoneIds, onClose, onSave }: Wo
         <p className="settings-hint world-clock-hint">时间由浏览器本地计算，不请求定位或外部数据。选择顺序即为卡片展示顺序。</p>
         <div className="modal-actions"><button className="quiet-button" type="button" onClick={onClose}>取消</button><button className="primary-button" type="button" onClick={() => onSave(draft)}><Check />保存设置</button></div>
       </section>
-    </div>
+    </ManagedLayer>
   );
 }

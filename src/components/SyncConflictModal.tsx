@@ -1,5 +1,6 @@
 import { Cloud, CloudDownload, Laptop, X } from 'lucide-react';
 import { useState } from 'react';
+import { ManagedLayer } from './ManagedLayer';
 
 interface SyncConflictModalProps {
   onClose: () => void;
@@ -24,7 +25,7 @@ export function SyncConflictModal({ onClose, onKeepLocal, onUseCloud }: SyncConf
   }
 
   return (
-    <div className="modal-layer" role="presentation">
+    <ManagedLayer className="modal-layer" onEscape={onClose}>
       <button className="modal-backdrop" type="button" onClick={onClose} aria-label="稍后处理同步冲突" />
       <section className="shortcut-modal sync-conflict-modal" role="dialog" aria-modal="true" aria-labelledby="syncConflictTitle">
         <div className="modal-heading">
@@ -42,6 +43,6 @@ export function SyncConflictModal({ onClose, onKeepLocal, onUseCloud }: SyncConf
         {error && <p className="form-error">{error}</p>}
         <p className="workspace-hint">两种选择都会保留恢复副本，之后也可以从云端历史版本恢复。</p>
       </section>
-    </div>
+    </ManagedLayer>
   );
 }

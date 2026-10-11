@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { CalendarClock, Plus, Trash2, X } from 'lucide-react';
 import { isValidDateKey } from '../lib/timeEvents';
 import type { DeskTimeEvent, DeskTimeEventType } from '../types';
+import { ManagedLayer } from './ManagedLayer';
 
 type TimeEventInput = Omit<DeskTimeEvent, 'id'>;
 
@@ -30,7 +31,7 @@ export function TimeEventModal({ event, todayKey, onClose, onDelete, onSave }: T
   }
 
   return (
-    <div className="modal-layer" role="presentation">
+    <ManagedLayer className="modal-layer" onEscape={onClose}>
       <button className="modal-backdrop" type="button" onClick={onClose} aria-label="关闭时间事件" />
       <form className="shortcut-modal time-event-modal" onSubmit={submit} role="dialog" aria-modal="true" aria-labelledby="timeEventModalTitle">
         <div className="modal-heading">
@@ -52,6 +53,6 @@ export function TimeEventModal({ event, todayKey, onClose, onDelete, onSave }: T
           <button className="primary-button" type="submit"><Plus />保存</button>
         </div>
       </form>
-    </div>
+    </ManagedLayer>
   );
 }

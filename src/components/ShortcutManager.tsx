@@ -1,5 +1,6 @@
 import { ArrowDown, ArrowUp, Pencil, Plus, Trash2, X } from 'lucide-react';
 import type { Shortcut } from '../types';
+import { ManagedLayer } from './ManagedLayer';
 
 interface ShortcutManagerProps {
   category: string;
@@ -21,7 +22,7 @@ function shortcutHost(value: string): string {
 
 export function ShortcutManager({ category, shortcuts, onAdd, onClose, onDelete, onEdit, onMove }: ShortcutManagerProps) {
   return (
-    <div className="modal-layer" role="presentation">
+    <ManagedLayer className="modal-layer" onEscape={onClose}>
       <button className="modal-backdrop" type="button" onClick={onClose} aria-label="关闭网站管理" />
       <section className="shortcut-manager-modal" role="dialog" aria-modal="true" aria-labelledby="shortcutManagerTitle">
         <div className="modal-heading">
@@ -48,6 +49,6 @@ export function ShortcutManager({ category, shortcuts, onAdd, onClose, onDelete,
         </div>
         <p className="category-hint">编辑网站时可以同时更换分类，排序只影响当前分类。</p>
       </section>
-    </div>
+    </ManagedLayer>
   );
 }

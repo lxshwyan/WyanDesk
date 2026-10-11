@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Bell, BellRing, Check, Plus, Trash2, X } from 'lucide-react';
 import type { DeskReminder } from '../types';
+import { ManagedLayer } from './ManagedLayer';
 
 const reminderIcons: Record<DeskReminder['kind'], string> = {
   work: '工',
@@ -40,7 +41,7 @@ export function ReminderSettingsModal({ reminders, systemNotifications, onAdd, o
   }
 
   return (
-    <div className="modal-layer" role="presentation">
+    <ManagedLayer className="modal-layer" onEscape={onClose}>
       <button className="modal-backdrop" type="button" onClick={onClose} aria-label="关闭提醒设置" />
       <section className="shortcut-modal reminder-settings-modal" role="dialog" aria-modal="true" aria-labelledby="reminderSettingsTitle">
         <div className="modal-heading">
@@ -81,6 +82,6 @@ export function ReminderSettingsModal({ reminders, systemNotifications, onAdd, o
         <p className="settings-hint reminder-dialog-hint">页面打开时才会检查提醒；允许系统通知后，切换到其他标签页也能看到。</p>
         <div className="modal-actions"><button className="primary-button" type="button" onClick={onClose}><Check />完成</button></div>
       </section>
-    </div>
+    </ManagedLayer>
   );
 }

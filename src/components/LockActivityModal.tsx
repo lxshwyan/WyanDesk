@@ -1,6 +1,7 @@
 import { EyeOff, Keyboard, Maximize2, MousePointer2, ShieldAlert, Trash2, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { countLockActivity, type LockActivityEntry, type LockActivityKind } from '../lib/lockActivity';
+import { ManagedLayer } from './ManagedLayer';
 
 interface LockActivityModalProps {
   entries: LockActivityEntry[];
@@ -41,7 +42,7 @@ export function LockActivityModal({ entries, onClose, onClear }: LockActivityMod
   const activityCount = countLockActivity(visibleEntries);
 
   return (
-    <div className="modal-layer" role="presentation">
+    <ManagedLayer className="modal-layer" onEscape={onClose}>
       <button className="modal-backdrop" type="button" onClick={onClose} aria-label="关闭锁屏活动记录" />
       <section className="shortcut-modal lock-activity-modal" role="dialog" aria-modal="true" aria-labelledby="lockActivityTitle">
         <div className="modal-heading">
@@ -75,6 +76,6 @@ export function LockActivityModal({ entries, onClose, onClear }: LockActivityMod
           <button className="primary-button" type="button" onClick={onClose}>关闭</button>
         </div>
       </section>
-    </div>
+    </ManagedLayer>
   );
 }

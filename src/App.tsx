@@ -1,4 +1,4 @@
-import { FormEvent, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { flushSync } from 'react-dom';
 import packageInfo from '../package.json';
 import {
@@ -63,6 +63,7 @@ import { DeleteCloudDataModal } from './components/DeleteCloudDataModal';
 import { DailyOverviewCard } from './components/DailyOverviewCard';
 import { FocusTimerCard } from './components/FocusTimerCard';
 import { QuickActionsCard } from './components/QuickActionsCard';
+import { ReminderAlertModal } from './components/ReminderAlertModal';
 import { ReminderSettingsModal } from './components/ReminderSettingsModal';
 import { SceneBackdrop } from './components/SceneBackdrop';
 import { ScheduleCard } from './components/ScheduleCard';
@@ -78,6 +79,7 @@ import { FlipClock } from './components/FlipClock';
 import { KeyboardHelpModal } from './components/KeyboardHelpModal';
 import { LockActivityModal } from './components/LockActivityModal';
 import { LockPinModal, type LockPinMode } from './components/LockPinModal';
+import { ManagedLayer } from './components/ManagedLayer';
 import { MonthCalendarCard } from './components/MonthCalendarCard';
 import { TrustCenterModal, type TrustPanel } from './components/TrustCenterModal';
 import { InboxModal } from './components/InboxModal';
@@ -91,6 +93,7 @@ import { mergeBrowserBookmarks, parseBrowserBookmarks } from './lib/bookmarks';
 import { categoryDeleteTarget, categoryExists, cleanCategoryName, deleteCategory, moveCategory, renameCategory } from './lib/categories';
 import { parseQuickCommand, quickCommandURL } from './lib/commandShortcuts';
 import { getNextReminder, minutesFromTime, reminderIsDue } from './lib/reminders';
+import { playReminderChime, shouldShowInPageReminder, type ReminderAlertData } from './lib/reminderAlert';
 import { directURLFromInput, moveShortcutInCategory, shortcutURLExists } from './lib/shortcuts';
 import { parseICS, serializeWorkspaceICS } from './lib/ics';
 import { clearDeskState, normalizeURL, parseDeskBackup, readDeskStateWithStatus, readRecoverySnapshot, serializeDeskBackup, writeDeskState } from './lib/storage';
@@ -159,6 +162,26 @@ function localDateKey(value: Date): string {
   return `${year}-${month}-${date}`;
 }
 
+function popoverMenuItems(popover: HTMLElement | null): HTMLElement[] {
+  if (!popover) return [];
+  return [...popover.querySelectorAll<HTMLElement>('[role="menuitem"], [role="menuitemradio"]')]
+    .filter((item) => !item.hasAttribute('disabled') && item.getAttribute('aria-disabled') !== 'true');
+}
+
+function handlePopoverNavigation(event: ReactKeyboardEvent<HTMLElement>, popover: HTMLElement | null): void {
+  const items = popoverMenuItems(popover);
+  if (!items.length) return;
+  const currentIndex = items.indexOf(document.activeElement as HTMLElement);
+  let nextIndex = currentIndex;
+  if (event.key === 'ArrowDown') nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % items.length;
+  else if (event.key === 'ArrowUp') nextIndex = currentIndex < 0 ? items.length - 1 : (currentIndex - 1 + items.length) % items.length;
+  else if (event.key === 'Home') nextIndex = 0;
+  else if (event.key === 'End') nextIndex = items.length - 1;
+  else return;
+  event.preventDefault();
+  items[nextIndex].focus();
+}
+
 function App() {
   const [initialRead] = useState(() => readDeskStateWithStatus());
   const [state, setState] = useState<DeskState>(initialRead.state);
@@ -204,6 +227,7 @@ function App() {
   const [taskDraft, setTaskDraft] = useState('');
   const [taskCreateModalOpen, setTaskCreateModalOpen] = useState(false);
   const [reminderSettingsOpen, setReminderSettingsOpen] = useState(false);
+  const [activeReminderAlert, setActiveReminderAlert] = useState<ReminderAlertData | null>(null);
   const [worldClockSettingsOpen, setWorldClockSettingsOpen] = useState(false);
   const [taskDetailId, setTaskDetailId] = useState('');
   const [toast, setToast] = useState<ToastMessage | null>(null);
@@ -216,9 +240,17 @@ function App() {
   const [eventDraft, setEventDraft] = useState({ title: '', date: localDateKey(new Date()), time: '09:00' });
   const searchInputRef = useRef<HTMLInputElement>(null);
   const taskInputRef = useRef<HTMLInputElement>(null);
+  const workspaceTriggerRef = useRef<HTMLButtonElement>(null);
+  const workspacePopoverRef = useRef<HTMLDivElement>(null);
+  const appSwitcherTriggerRef = useRef<HTMLButtonElement>(null);
+  const appSwitcherPopoverRef = useRef<HTMLDivElement>(null);
   const unlockButtonRef = useRef<HTMLButtonElement>(null);
   const unlockPinRef = useRef<HTMLInputElement>(null);
   const toastTimerRef = useRef<number | undefined>(undefined);
+  const activeReminderAlertRef = useRef<ReminderAlertData | null>(null);
+  const reminderAlertQueueRef = useRef<ReminderAlertData[]>([]);
+  const reminderSnoozeTimersRef = useRef<Set<number>>(new Set());
+  const isLockedRef = useRef(false);
   const fullscreenOwnedRef = useRef(false);
   const fullscreenRequestPendingRef = useRef(false);
   const unlockRequestedRef = useRef(false);
@@ -371,6 +403,53 @@ function App() {
     toastTimerRef.current = window.setTimeout(() => setToast(null), undo ? 6500 : 3200);
   }, []);
 
+  isLockedRef.current = isLocked;
+
+  const presentInPageReminder = useCallback((alert: ReminderAlertData): boolean => {
+    if (!shouldShowInPageReminder(document.visibilityState, isLockedRef.current)) return false;
+    if (activeReminderAlertRef.current) {
+      if (!reminderAlertQueueRef.current.some((item) => item.id === alert.id)) reminderAlertQueueRef.current.push(alert);
+      return true;
+    }
+    activeReminderAlertRef.current = alert;
+    setActiveReminderAlert(alert);
+    playReminderChime();
+    return true;
+  }, []);
+
+  const showSystemReminder = useCallback((alert: ReminderAlertData) => {
+    if (!state.preferences.systemNotifications || !('Notification' in window) || Notification.permission !== 'granted') return;
+    new Notification(alert.notificationTitle, { body: alert.kind === 'task' ? `${alert.context} · ${alert.title}` : alert.title, icon: '/favicon.svg' });
+  }, [state.preferences.systemNotifications]);
+
+  const deliverReminderAlert = useCallback((alert: ReminderAlertData) => {
+    if (!presentInPageReminder(alert)) showSystemReminder(alert);
+  }, [presentInPageReminder, showSystemReminder]);
+
+  const dismissActiveReminder = useCallback(() => {
+    const next = reminderAlertQueueRef.current.shift() || null;
+    activeReminderAlertRef.current = next;
+    setActiveReminderAlert(next);
+    if (next) playReminderChime();
+  }, []);
+
+  const snoozeActiveReminder = useCallback(() => {
+    const alert = activeReminderAlertRef.current;
+    if (!alert) return;
+    dismissActiveReminder();
+    const timer = window.setTimeout(() => {
+      reminderSnoozeTimersRef.current.delete(timer);
+      deliverReminderAlert(alert);
+    }, 5 * 60_000);
+    reminderSnoozeTimersRef.current.add(timer);
+    notify('已延后 5 分钟提醒');
+  }, [deliverReminderAlert, dismissActiveReminder, notify]);
+
+  useEffect(() => () => {
+    reminderSnoozeTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+    reminderSnoozeTimersRef.current.clear();
+  }, []);
+
   const undoToast = useCallback(() => {
     if (!toast?.undo) return;
     const undo = toast.undo;
@@ -492,27 +571,6 @@ function App() {
         setCommandOpen((value) => !value);
         return;
       }
-      if (event.key === 'Escape') {
-        setSettingsOpen(false);
-        setSwitcherOpen(false);
-        setWorkspaceMenuOpen(false);
-        setWorkspaceManagerOpen(false);
-        setShortcutModalOpen(false);
-        setShortcutManagerOpen(false);
-        setShortcutGroupManagerOpen(false);
-        setCategoryModalOpen(false);
-        setEventModalOpen(false);
-        setTaskCreateModalOpen(false);
-        setReminderSettingsOpen(false);
-        setTaskDetailId('');
-        setCommandOpen(false);
-        setKeyboardHelpOpen(false);
-        setInboxOpen(false);
-        setCloudHistoryOpen(false);
-        setSyncConflictOpen(false);
-        setDeleteCloudOpen(false);
-        setTrustPanel(null);
-      }
       if (event.key === '/' && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
         event.preventDefault();
         searchInputRef.current?.focus();
@@ -525,6 +583,37 @@ function App() {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [isLocked, lockPinEnabled, unlockDesktop]);
+
+  useEffect(() => {
+    if (!workspaceMenuOpen && !switcherOpen) return undefined;
+
+    const closeOutside = (event: Event) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (workspaceMenuOpen && !workspaceTriggerRef.current?.parentElement?.contains(target)) setWorkspaceMenuOpen(false);
+      if (switcherOpen && !appSwitcherTriggerRef.current?.parentElement?.contains(target)) setSwitcherOpen(false);
+    };
+    const closeWithEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || document.querySelector('[data-managed-layer="true"]')) return;
+      event.preventDefault();
+      if (workspaceMenuOpen) {
+        setWorkspaceMenuOpen(false);
+        workspaceTriggerRef.current?.focus({ preventScroll: true });
+      } else if (switcherOpen) {
+        setSwitcherOpen(false);
+        appSwitcherTriggerRef.current?.focus({ preventScroll: true });
+      }
+    };
+
+    document.addEventListener('pointerdown', closeOutside);
+    document.addEventListener('focusin', closeOutside);
+    document.addEventListener('keydown', closeWithEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOutside);
+      document.removeEventListener('focusin', closeOutside);
+      document.removeEventListener('keydown', closeWithEscape);
+    };
+  }, [switcherOpen, workspaceMenuOpen]);
 
   useEffect(() => {
     if (!isLocked) return;
@@ -595,16 +684,13 @@ function App() {
         const firedKey = `wyandesk.reminder.fired.${reminder.id}`;
         if (window.localStorage.getItem(firedKey) === dateKey) continue;
         window.localStorage.setItem(firedKey, dateKey);
-        notify(`${reminder.time}  ${reminder.title}`);
-        if (state.preferences.systemNotifications && 'Notification' in window && Notification.permission === 'granted') {
-          new Notification('微言桌面', { body: reminder.title, icon: '/favicon.svg' });
-        }
+        deliverReminderAlert({ id: `reminder:${reminder.id}:${dateKey}`, title: reminder.title, time: reminder.time, context: '今日', kind: reminder.kind, notificationTitle: '微言桌面' });
       }
     };
     checkReminders();
     const timer = window.setInterval(checkReminders, 15_000);
     return () => window.clearInterval(timer);
-  }, [notify, state.preferences.systemNotifications, state.reminders]);
+  }, [deliverReminderAlert, state.reminders]);
 
   useEffect(() => {
     const checkTaskReminders = () => {
@@ -617,18 +703,14 @@ function App() {
           const firedKey = `wyandesk.task-reminder.fired.${task.id}.${dateKey}`;
           if (window.localStorage.getItem(firedKey)) continue;
           window.localStorage.setItem(firedKey, '1');
-          const message = `${item.name} · ${task.text}`;
-          notify(message);
-          if (state.preferences.systemNotifications && 'Notification' in window && Notification.permission === 'granted') {
-            new Notification('任务提醒', { body: message, icon: '/favicon.svg' });
-          }
+          deliverReminderAlert({ id: `task:${task.id}:${dateKey}`, title: task.text, time: task.reminderTime, context: item.name, kind: 'task', notificationTitle: '任务提醒' });
         }
       }
     };
     checkTaskReminders();
     const timer = window.setInterval(checkTaskReminders, 15_000);
     return () => window.clearInterval(timer);
-  }, [notify, state.preferences.systemNotifications, state.workspaces]);
+  }, [deliverReminderAlert, state.workspaces]);
 
   const workspace = state.workspaces.find((item) => item.id === state.activeWorkspaceId) || state.workspaces[0];
 
@@ -1884,31 +1966,71 @@ function App() {
         </a>
         <div className="header-actions">
           <div className="workspace-switcher-wrap">
-            <button className={`workspace-trigger${workspaceMenuOpen ? ' active' : ''}`} type="button" onClick={() => { setWorkspaceMenuOpen((value) => !value); setSwitcherOpen(false); }} aria-label="切换桌面" aria-expanded={workspaceMenuOpen}>
+            <button
+              ref={workspaceTriggerRef}
+              className={`workspace-trigger${workspaceMenuOpen ? ' active' : ''}`}
+              type="button"
+              onClick={() => { setWorkspaceMenuOpen((value) => !value); setSwitcherOpen(false); }}
+              onKeyDown={(event) => {
+                if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+                event.preventDefault();
+                const focusLast = event.key === 'ArrowUp';
+                setWorkspaceMenuOpen(true);
+                setSwitcherOpen(false);
+                window.requestAnimationFrame(() => {
+                  const items = popoverMenuItems(workspacePopoverRef.current);
+                  items[focusLast ? items.length - 1 : 0]?.focus();
+                });
+              }}
+              aria-label="切换桌面"
+              aria-expanded={workspaceMenuOpen}
+              aria-haspopup="menu"
+              aria-controls="workspaceMenu"
+            >
               <Layers3 aria-hidden="true" /><span>{workspace.name}</span><ChevronDown aria-hidden="true" />
             </button>
             {workspaceMenuOpen && (
-              <div className="workspace-popover" role="menu">
+              <div ref={workspacePopoverRef} id="workspaceMenu" className="workspace-popover" role="menu" aria-label="切换桌面" onKeyDown={(event) => handlePopoverNavigation(event, workspacePopoverRef.current)}>
                 <div className="popover-heading"><strong>切换桌面</strong><span>{state.workspaces.length}/8</span></div>
                 <div className="workspace-menu-list">
                   {state.workspaces.map((item) => (
-                    <button key={item.id} className={item.id === workspace.id ? 'active' : ''} type="button" role="menuitem" onClick={() => switchWorkspace(item.id)}>
+                    <button key={item.id} className={item.id === workspace.id ? 'active' : ''} type="button" role="menuitemradio" aria-checked={item.id === workspace.id} onClick={() => switchWorkspace(item.id)}>
                       <span><strong>{item.name}</strong><small>{item.shortcuts.length} 个网站 · {item.tasks.filter((task) => !task.done).length} 个待办</small></span>
                       {item.id === workspace.id && <Check aria-hidden="true" />}
                     </button>
                   ))}
                 </div>
-                <button className="workspace-manage-link" type="button" onClick={() => { setWorkspaceMenuOpen(false); setWorkspaceManagerOpen(true); }}><Settings />管理桌面</button>
+                <button className="workspace-manage-link" type="button" role="menuitem" onClick={() => { setWorkspaceMenuOpen(false); setWorkspaceManagerOpen(true); }}><Settings />管理桌面</button>
               </div>
             )}
           </div>
           <div className="app-switcher-wrap">
-            <button className={`icon-button${switcherOpen ? ' active' : ''}`} type="button" onClick={() => { setSwitcherOpen((value) => !value); setWorkspaceMenuOpen(false); }} aria-label="微言应用" aria-expanded={switcherOpen}>
+            <button
+              ref={appSwitcherTriggerRef}
+              className={`icon-button${switcherOpen ? ' active' : ''}`}
+              type="button"
+              onClick={() => { setSwitcherOpen((value) => !value); setWorkspaceMenuOpen(false); }}
+              onKeyDown={(event) => {
+                if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+                event.preventDefault();
+                const focusLast = event.key === 'ArrowUp';
+                setSwitcherOpen(true);
+                setWorkspaceMenuOpen(false);
+                window.requestAnimationFrame(() => {
+                  const items = popoverMenuItems(appSwitcherPopoverRef.current);
+                  items[focusLast ? items.length - 1 : 0]?.focus();
+                });
+              }}
+              aria-label="微言应用"
+              aria-expanded={switcherOpen}
+              aria-haspopup="menu"
+              aria-controls="appSwitcherMenu"
+            >
               <Grid3X3 aria-hidden="true" />
             </button>
             {switcherOpen && (
-              <div className="app-switcher" role="menu">
-                <div className="popover-heading"><strong>微言应用</strong><a href="https://wyanhub.com" target="_blank" rel="noreferrer">WyanHub <ChevronRight /></a></div>
+              <div ref={appSwitcherPopoverRef} id="appSwitcherMenu" className="app-switcher" role="menu" aria-label="微言应用" onKeyDown={(event) => handlePopoverNavigation(event, appSwitcherPopoverRef.current)}>
+                <div className="popover-heading"><strong>微言应用</strong><a href="https://wyanhub.com" target="_blank" rel="noreferrer" role="menuitem">WyanHub <ChevronRight /></a></div>
                 <div className="switcher-grid">
                   {wyanProducts.slice(1, 7).map((product) => (
                     <a key={product.id} href={product.url} target="_blank" rel="noreferrer" role="menuitem">
@@ -1944,20 +2066,21 @@ function App() {
           </form>
         </section>
 
+        {state.preferences.showRecent && recentShortcuts.length > 0 && (
+          <section className="recent-strip glass-panel" aria-label="最近使用">
+            <div className="recent-label"><History aria-hidden="true" /><span><strong>最近使用</strong><small>继续刚才的工作</small></span></div>
+            <div className="recent-list">
+              {recentShortcuts.map((shortcut) => (
+                <button key={shortcut.id} type="button" onClick={() => openShortcut(shortcut)} title={shortcut.title}>
+                  <span style={{ '--shortcut-color': shortcut.accent } as React.CSSProperties}>{shortcut.icon}</span><small>{shortcut.title}</small>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+
         <div className="desk-layout" data-rail-width={workspace.layout.railWidth}>
           <div className="desk-primary">
-          {state.preferences.showRecent && recentShortcuts.length > 0 && (
-            <section className="recent-strip glass-panel" aria-label="最近使用">
-              <div className="recent-label"><History aria-hidden="true" /><span><strong>最近使用</strong><small>继续刚才的工作</small></span></div>
-              <div className="recent-list">
-                {recentShortcuts.slice(0, 5).map((shortcut) => (
-                  <button key={shortcut.id} type="button" onClick={() => openShortcut(shortcut)} title={shortcut.title}>
-                    <span style={{ '--shortcut-color': shortcut.accent } as React.CSSProperties}>{shortcut.icon}</span><small>{shortcut.title}</small>
-                  </button>
-                ))}
-              </div>
-            </section>
-          )}
           {state.preferences.showTimeEvents && state.timeEvents.length > 0 && (
             <TimeEventsStrip events={state.timeEvents} now={now} onAdd={() => openTimeEventModal()} onEdit={openTimeEventModal} />
           )}
@@ -2041,7 +2164,7 @@ function App() {
       </footer>
 
       {settingsOpen && (
-        <div className="drawer-layer">
+        <ManagedLayer className="drawer-layer" onEscape={() => setSettingsOpen(false)}>
           <button className="drawer-backdrop" type="button" onClick={() => setSettingsOpen(false)} aria-label="关闭设置" />
           <aside className="settings-drawer" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
             <div className="drawer-heading"><div><span>微言桌面</span><h2 id="settingsTitle">桌面设置</h2></div><button className="icon-button" type="button" onClick={() => setSettingsOpen(false)} aria-label="关闭"><X /></button></div>
@@ -2214,11 +2337,11 @@ function App() {
 
             <button className="reset-button" type="button" onClick={resetDesktop}><RotateCcw />恢复默认桌面</button>
           </aside>
-        </div>
+        </ManagedLayer>
       )}
 
       {shortcutModalOpen && (
-        <div className="modal-layer" role="presentation">
+        <ManagedLayer className="modal-layer" onEscape={closeShortcutModal}>
           <button className="modal-backdrop" type="button" onClick={closeShortcutModal} aria-label="关闭" />
           <form className="shortcut-modal" onSubmit={saveShortcut} role="dialog" aria-modal="true" aria-labelledby="shortcutModalTitle">
             <div className="modal-heading"><div><span className="modal-icon">{editingShortcutId ? <Pencil /> : <Sparkles />}</span><div><h2 id="shortcutModalTitle">{editingShortcutId ? '编辑快捷网站' : '添加快捷网站'}</h2><p>{editingShortcutId ? '可修改名称、网址和所在分类' : '保存到当前浏览器'}</p></div></div><button className="icon-button" type="button" onClick={closeShortcutModal} aria-label="关闭"><X /></button></div>
@@ -2230,7 +2353,7 @@ function App() {
             </div>
             <div className="modal-actions"><button className="quiet-button" type="button" onClick={closeShortcutModal}>取消</button><button className="primary-button" type="submit">{editingShortcutId ? <Check /> : <Plus />}{editingShortcutId ? '保存修改' : '添加到桌面'}</button></div>
           </form>
-        </div>
+        </ManagedLayer>
       )}
 
       {categoryModalOpen && (
@@ -2258,7 +2381,7 @@ function App() {
       )}
 
       {eventModalOpen && (
-        <div className="modal-layer" role="presentation">
+        <ManagedLayer className="modal-layer" onEscape={() => setEventModalOpen(false)}>
           <button className="modal-backdrop" type="button" onClick={() => setEventModalOpen(false)} aria-label="关闭" />
           <form className="shortcut-modal" onSubmit={addEvent} role="dialog" aria-modal="true" aria-labelledby="eventModalTitle">
             <div className="modal-heading"><div><span className="modal-icon"><CalendarPlus /></span><div><h2 id="eventModalTitle">添加日程</h2><p>本地保存，不连接第三方账号</p></div></div><button className="icon-button" type="button" onClick={() => setEventModalOpen(false)} aria-label="关闭"><X /></button></div>
@@ -2268,7 +2391,7 @@ function App() {
             </div>
             <div className="modal-actions"><button className="quiet-button" type="button" onClick={() => setEventModalOpen(false)}>取消</button><button className="primary-button" type="submit"><Plus />保存日程</button></div>
           </form>
-        </div>
+        </ManagedLayer>
       )}
 
       {timeEventModalOpen && (
@@ -2299,6 +2422,14 @@ function App() {
           onEnableNotifications={() => void enableNotifications()}
           onDisableNotifications={() => updatePreferences({ systemNotifications: false })}
           onUpdate={updateReminder}
+        />
+      )}
+
+      {activeReminderAlert && (
+        <ReminderAlertModal
+          alert={activeReminderAlert}
+          onDismiss={dismissActiveReminder}
+          onSnooze={snoozeActiveReminder}
         />
       )}
 

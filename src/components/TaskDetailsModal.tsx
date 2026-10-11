@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Check, Circle, Save, Star, Trash2, X } from 'lucide-react';
 import type { DeskTask } from '../types';
+import { ManagedLayer } from './ManagedLayer';
 
 interface TaskDetailsModalProps {
   task: DeskTask;
@@ -31,7 +32,7 @@ export function TaskDetailsModal({ task, focused, onClose, onDelete, onSave, onT
   }
 
   return (
-    <div className="modal-layer" role="presentation">
+    <ManagedLayer className="modal-layer" onEscape={onClose}>
       <button className="modal-backdrop" type="button" onClick={onClose} aria-label="关闭任务详情" />
       <form className="shortcut-modal task-detail-modal" onSubmit={submit} role="dialog" aria-modal="true" aria-labelledby="taskDetailTitle">
         <div className="modal-heading">
@@ -64,6 +65,6 @@ export function TaskDetailsModal({ task, focused, onClose, onDelete, onSave, onT
           <button className="primary-button" type="submit"><Save />保存</button>
         </div>
       </form>
-    </div>
+    </ManagedLayer>
   );
 }

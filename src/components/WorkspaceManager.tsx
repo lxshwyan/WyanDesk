@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { ArrowDown, ArrowUp, Check, Copy, Layers3, Pencil, Plus, Trash2, X } from 'lucide-react';
 import type { DeskWorkspace } from '../types';
+import { ManagedLayer } from './ManagedLayer';
 
 interface WorkspaceManagerProps {
   workspaces: DeskWorkspace[];
@@ -35,7 +36,7 @@ export function WorkspaceManager({ workspaces, activeId, onAdd, onClose, onDelet
   }
 
   return (
-    <div className="modal-layer" role="presentation">
+    <ManagedLayer className="modal-layer" onEscape={onClose}>
       <button className="modal-backdrop" type="button" onClick={onClose} aria-label="关闭桌面管理" />
       <section className="workspace-modal" role="dialog" aria-modal="true" aria-labelledby="workspaceManagerTitle">
         <div className="modal-heading">
@@ -77,6 +78,6 @@ export function WorkspaceManager({ workspaces, activeId, onAdd, onClose, onDelet
         </div>
         <p className="workspace-hint">最多 8 个桌面。复制会保留当前桌面的内容，空白桌面从“常用”分类开始。</p>
       </section>
-    </div>
+    </ManagedLayer>
   );
 }

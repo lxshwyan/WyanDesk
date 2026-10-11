@@ -1,4 +1,5 @@
 import { Command, Keyboard, Search, X } from 'lucide-react';
+import { ManagedLayer } from './ManagedLayer';
 
 interface KeyboardHelpModalProps {
   onClose: () => void;
@@ -14,7 +15,7 @@ const shortcuts = [
 
 export function KeyboardHelpModal({ onClose }: KeyboardHelpModalProps) {
   return (
-    <div className="modal-layer" role="presentation">
+    <ManagedLayer className="modal-layer" onEscape={onClose}>
       <button className="modal-backdrop" type="button" onClick={onClose} aria-label="关闭快捷键帮助" />
       <section className="shortcut-modal keyboard-help-modal" role="dialog" aria-modal="true" aria-labelledby="keyboardHelpTitle">
         <div className="modal-heading">
@@ -33,6 +34,6 @@ export function KeyboardHelpModal({ onClose }: KeyboardHelpModalProps) {
         </div>
         <div className="keyboard-help-tip"><Command /><span>命令中心还支持：<strong>任务 内容</strong>、<strong>g 关键词</strong>、<strong>fy 文本</strong></span><Search /></div>
       </section>
-    </div>
+    </ManagedLayer>
   );
 }

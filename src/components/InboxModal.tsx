@@ -1,6 +1,7 @@
 import { ArrowRight, Inbox, Link2, ListTodo, Plus, StickyNote, Trash2, X } from 'lucide-react';
 import { useMemo, useState, type FormEvent } from 'react';
 import type { DeskInboxItem, DeskWorkspace } from '../types';
+import { ManagedLayer } from './ManagedLayer';
 
 interface InboxModalProps {
   items: DeskInboxItem[];
@@ -37,7 +38,7 @@ export function InboxModal({ items, workspaces, activeWorkspaceId, onAdd, onClos
   }
 
   return (
-    <div className="modal-layer" role="presentation">
+    <ManagedLayer className="modal-layer" onEscape={onClose}>
       <button className="modal-backdrop" type="button" onClick={onClose} aria-label="关闭收集箱" />
       <section className="shortcut-modal inbox-modal" role="dialog" aria-modal="true" aria-labelledby="inboxTitle">
         <div className="modal-heading">
@@ -65,6 +66,6 @@ export function InboxModal({ items, workspaces, activeWorkspaceId, onAdd, onClos
           {!items.length && <div className="manager-empty">收集箱是空的</div>}
         </div>
       </section>
-    </div>
+    </ManagedLayer>
   );
 }

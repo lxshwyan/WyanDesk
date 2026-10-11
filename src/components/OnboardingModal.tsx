@@ -1,5 +1,6 @@
 import { BookMarked, Check, Download, Layers3, LayoutGrid, SkipForward, Sparkles, X } from 'lucide-react';
 import { useState, type ChangeEvent } from 'react';
+import { ManagedLayer } from './ManagedLayer';
 
 export type DeskTemplate = 'balanced' | 'simple' | 'blank';
 
@@ -20,7 +21,7 @@ export function OnboardingModal({ extensionInstalled, onComplete, onImportBookma
   }
 
   return (
-    <div className="modal-layer onboarding-layer" role="presentation">
+    <ManagedLayer className="modal-layer onboarding-layer" onEscape={onComplete}>
       <section className="shortcut-modal onboarding-modal" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle">
         <div className="onboarding-progress" aria-label={`第 ${step + 1} 步，共 3 步`}><i className={step >= 0 ? 'active' : ''} /><i className={step >= 1 ? 'active' : ''} /><i className={step >= 2 ? 'active' : ''} /></div>
         <div className="modal-heading">
@@ -61,6 +62,6 @@ export function OnboardingModal({ extensionInstalled, onComplete, onImportBookma
           <div>{step > 0 && <button className="quiet-button" type="button" onClick={() => setStep((value) => value - 1)}>上一步</button>}<button className="primary-button" type="button" onClick={() => step === 2 ? onComplete() : setStep((value) => value + 1)}>{step === 2 ? <><Check />开始使用</> : '下一步'}</button></div>
         </div>
       </section>
-    </div>
+    </ManagedLayer>
   );
 }

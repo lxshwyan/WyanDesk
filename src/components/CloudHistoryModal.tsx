@@ -1,6 +1,7 @@
 import { Cloud, History, RotateCcw, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { CloudRevision } from '../lib/cloudSync';
+import { ManagedLayer } from './ManagedLayer';
 
 interface CloudHistoryModalProps {
   onClose: () => void;
@@ -40,7 +41,7 @@ export function CloudHistoryModal({ onClose, onLoad, onRestore }: CloudHistoryMo
   }
 
   return (
-    <div className="modal-layer" role="presentation">
+    <ManagedLayer className="modal-layer" onEscape={onClose}>
       <button className="modal-backdrop" type="button" onClick={onClose} aria-label="关闭云端历史版本" />
       <section className="shortcut-modal cloud-history-modal" role="dialog" aria-modal="true" aria-labelledby="cloudHistoryTitle">
         <div className="modal-heading">
@@ -60,6 +61,6 @@ export function CloudHistoryModal({ onClose, onLoad, onRestore }: CloudHistoryMo
         </div>
         {error && <p className="form-error">{error}</p>}
       </section>
-    </div>
+    </ManagedLayer>
   );
 }

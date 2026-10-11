@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { CornerDownLeft, Search, X } from 'lucide-react';
 import type { Shortcut } from '../types';
+import { ManagedLayer } from './ManagedLayer';
 
 export interface DeskCommand {
   id: string;
@@ -83,14 +84,11 @@ export function CommandPalette({ open, commands, shortcuts, currentWorkspaceId, 
     } else if (event.key === 'Enter' && results[activeIndex]) {
       event.preventDefault();
       runResult(results[activeIndex]);
-    } else if (event.key === 'Escape') {
-      event.preventDefault();
-      onClose();
     }
   }
 
   return (
-    <div className="command-layer" role="presentation">
+    <ManagedLayer className="command-layer" onEscape={onClose}>
       <button className="command-backdrop" type="button" onClick={onClose} aria-label="关闭命令中心" />
       <section className="command-palette" role="dialog" aria-modal="true" aria-label="命令中心">
         <div className="command-search">
@@ -126,6 +124,6 @@ export function CommandPalette({ open, commands, shortcuts, currentWorkspaceId, 
         </div>
         <footer className="command-footer"><span><kbd>↑↓</kbd> 选择</span><span><kbd>↵</kbd> 执行</span><span>快捷：任务 · 收集 · g · bd · bing · fy</span></footer>
       </section>
-    </div>
+    </ManagedLayer>
   );
 }

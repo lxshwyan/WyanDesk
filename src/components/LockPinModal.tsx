@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { KeyRound, LockKeyhole, X } from 'lucide-react';
 import { clearLockPin, saveLockPin, validLockPin, verifyLockPin } from '../lib/lockPin';
+import { ManagedLayer } from './ManagedLayer';
 
 export type LockPinMode = 'create' | 'change' | 'disable';
 
@@ -58,7 +59,7 @@ export function LockPinModal({ mode, onClose, onChanged }: LockPinModalProps) {
   const title = mode === 'create' ? '设置解锁密码' : mode === 'change' ? '修改解锁密码' : '关闭解锁密码';
 
   return (
-    <div className="modal-layer">
+    <ManagedLayer className="modal-layer" onEscape={onClose}>
       <button className="modal-backdrop" type="button" onClick={onClose} aria-label="关闭解锁密码设置" />
       <section className="shortcut-modal pin-modal" role="dialog" aria-modal="true" aria-labelledby="lockPinTitle">
         <div className="modal-heading">
@@ -80,6 +81,6 @@ export function LockPinModal({ mode, onClose, onChanged }: LockPinModalProps) {
           <div className="modal-actions"><button className="quiet-button" type="button" onClick={onClose}>取消</button><button className={`primary-button${mode === 'disable' ? ' pin-danger' : ''}`} type="submit" disabled={saving}>{saving ? '保存中…' : mode === 'disable' ? '确认关闭' : '保存'}</button></div>
         </form>
       </section>
-    </div>
+    </ManagedLayer>
   );
 }

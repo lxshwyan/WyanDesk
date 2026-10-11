@@ -1,6 +1,7 @@
 import { useMemo, useState, type CSSProperties, type FormEvent } from 'react';
 import { Check, FolderOpen, Pencil, Play, Plus, Search, Trash2, X } from 'lucide-react';
 import type { Shortcut, ShortcutGroup } from '../types';
+import { ManagedLayer } from './ManagedLayer';
 
 interface ShortcutGroupManagerProps {
   groups: ShortcutGroup[];
@@ -46,7 +47,7 @@ export function ShortcutGroupManager({ groups, shortcuts, onClose, onDelete, onO
   }
 
   return (
-    <div className="modal-layer" role="presentation">
+    <ManagedLayer className="modal-layer" onEscape={onClose}>
       <button className="modal-backdrop" type="button" onClick={onClose} aria-label="关闭网站组合" />
       <section className="shortcut-manager-modal group-manager-modal" role="dialog" aria-modal="true" aria-labelledby="groupManagerTitle">
         <div className="modal-heading">
@@ -100,6 +101,6 @@ export function ShortcutGroupManager({ groups, shortcuts, onClose, onDelete, onO
           </form>
         )}
       </section>
-    </div>
+    </ManagedLayer>
   );
 }

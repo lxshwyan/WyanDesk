@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { CloudOff, Trash2, X } from 'lucide-react';
+import { ManagedLayer } from './ManagedLayer';
 
 interface DeleteCloudDataModalProps {
   userName: string;
@@ -28,7 +29,7 @@ export function DeleteCloudDataModal({ userName, onClose, onDelete, onDeleted }:
   }
 
   return (
-    <div className="modal-layer">
+    <ManagedLayer className="modal-layer" onEscape={onClose}>
       <button className="modal-backdrop" type="button" onClick={onClose} aria-label="取消删除云端桌面数据" />
       <section className="shortcut-modal cloud-delete-modal" role="dialog" aria-modal="true" aria-labelledby="cloudDeleteTitle">
         <div className="modal-heading">
@@ -45,6 +46,6 @@ export function DeleteCloudDataModal({ userName, onClose, onDelete, onDeleted }:
           <div className="modal-actions"><button className="quiet-button" type="button" onClick={onClose}>取消</button><button className="primary-button destructive-button" type="submit" disabled={confirmation !== '删除' || deleting}>{deleting ? '正在删除…' : '删除云端数据'}</button></div>
         </form>
       </section>
-    </div>
+    </ManagedLayer>
   );
 }

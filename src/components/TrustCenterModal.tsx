@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Check, FileText, LogIn, MessageSquareText, Send, ShieldCheck, X } from 'lucide-react';
+import { ManagedLayer } from './ManagedLayer';
 
 export type TrustPanel = 'privacy' | 'terms' | 'feedback';
 
@@ -49,7 +50,7 @@ export function TrustCenterModal({ initialPanel, version, signedIn, onClose, onL
   const icon = panel === 'privacy' ? <ShieldCheck /> : panel === 'terms' ? <FileText /> : <MessageSquareText />;
 
   return (
-    <div className="modal-layer">
+    <ManagedLayer className="modal-layer" onEscape={onClose}>
       <button className="modal-backdrop" type="button" onClick={onClose} aria-label="关闭关于与支持" />
       <section className="shortcut-modal trust-modal" role="dialog" aria-modal="true" aria-labelledby="trustCenterTitle">
         <div className="modal-heading">
@@ -99,6 +100,6 @@ export function TrustCenterModal({ initialPanel, version, signedIn, onClose, onL
           </form>
         )}
       </section>
-    </div>
+    </ManagedLayer>
   );
 }

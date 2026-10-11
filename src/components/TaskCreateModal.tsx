@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { ListTodo, Plus, X } from 'lucide-react';
 import type { DeskTask } from '../types';
+import { ManagedLayer } from './ManagedLayer';
 
 type TaskDraft = Pick<DeskTask, 'text' | 'dueDate' | 'reminderTime' | 'recurrence'>;
 
@@ -35,7 +36,7 @@ export function TaskCreateModal({ todayKey, onClose, onSave }: TaskCreateModalPr
   }
 
   return (
-    <div className="modal-layer" role="presentation">
+    <ManagedLayer className="modal-layer" onEscape={onClose}>
       <button className="modal-backdrop" type="button" onClick={onClose} aria-label="关闭新任务" />
       <form className="shortcut-modal task-create-modal" onSubmit={submit} role="dialog" aria-modal="true" aria-labelledby="taskCreateTitle">
         <div className="modal-heading">
@@ -54,6 +55,6 @@ export function TaskCreateModal({ todayKey, onClose, onSave }: TaskCreateModalPr
 
         <div className="modal-actions"><button className="quiet-button" type="button" onClick={onClose}>取消</button><button className="primary-button" type="submit"><Plus />添加任务</button></div>
       </form>
-    </div>
+    </ManagedLayer>
   );
 }

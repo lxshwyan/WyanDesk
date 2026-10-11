@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Check, ChevronDown, ChevronUp, FolderPlus, Pencil, Trash2, X } from 'lucide-react';
+import { ManagedLayer } from './ManagedLayer';
 
 interface CategoryManagerProps {
   categories: string[];
@@ -47,7 +48,7 @@ export function CategoryManager({ categories, counts, onAdd, onClose, onDelete, 
   }
 
   return (
-    <div className="modal-layer" role="presentation">
+    <ManagedLayer className="modal-layer" onEscape={onClose}>
       <button className="modal-backdrop" type="button" onClick={onClose} aria-label="关闭分类管理" />
       <section className="category-modal" role="dialog" aria-modal="true" aria-labelledby="categoryManagerTitle">
         <div className="modal-heading">
@@ -85,6 +86,6 @@ export function CategoryManager({ categories, counts, onAdd, onClose, onDelete, 
         </div>
         <p className="category-hint">删除分类不会删除网站，网站会迁移到相邻分类。</p>
       </section>
-    </div>
+    </ManagedLayer>
   );
 }
