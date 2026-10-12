@@ -44,9 +44,9 @@ describe('cloud sync account controls', () => {
 
     await submitCloudFeedback('分类管理在手机上无法保存。', '0.2.0');
 
-    expect(request).toHaveBeenCalledWith('/api/desk/feedback', expect.objectContaining({
+    expect(request).toHaveBeenCalledWith('/api/feedback', expect.objectContaining({
       method: 'POST',
-      body: JSON.stringify({ message: '分类管理在手机上无法保存。', appVersion: '0.2.0' }),
+      body: JSON.stringify({ applicationId: 'desk', category: 'bug', message: '分类管理在手机上无法保存。', appVersion: '0.2.0' }),
     }));
   });
 

@@ -38,11 +38,15 @@ export function categoryDeleteTarget(categories: string[], name: string): string
 }
 
 export function deleteCategory(categories: string[], shortcuts: Shortcut[], name: string) {
-  const target = categoryDeleteTarget(categories, name);
-  if (!target) return { categories, shortcuts, target: '' };
+  if (!categoryDeleteTarget(categories, name)) {
+    return { categories, shortcuts, deletedShortcutIds: [] as string[] };
+  }
+  const deletedShortcutIds = shortcuts
+    .filter((shortcut) => shortcut.category === name)
+    .map((shortcut) => shortcut.id);
   return {
     categories: categories.filter((category) => category !== name),
-    shortcuts: shortcuts.map((shortcut) => shortcut.category === name ? { ...shortcut, category: target } : shortcut),
-    target,
+    shortcuts: shortcuts.filter((shortcut) => shortcut.category !== name),
+    deletedShortcutIds,
   };
 }

@@ -16,13 +16,15 @@ export function CategoryManager({ categories, counts, onAdd, onClose, onDelete, 
   const [draft, setDraft] = useState('');
   const [editing, setEditing] = useState('');
   const [renameDraft, setRenameDraft] = useState('');
+  const [deleting, setDeleting] = useState('');
 
   useEffect(() => {
     if (editing && !categories.includes(editing)) {
       setEditing('');
       setRenameDraft('');
     }
-  }, [categories, editing]);
+    if (deleting && !categories.includes(deleting)) setDeleting('');
+  }, [categories, deleting, editing]);
 
   function addCategory(event: FormEvent) {
     event.preventDefault();
@@ -63,7 +65,7 @@ export function CategoryManager({ categories, counts, onAdd, onClose, onDelete, 
 
         <div className="category-list" role="list" aria-label="已有分类">
           {categories.map((category, index) => (
-            <div className="category-row" key={category} role="listitem">
+            <div className={`category-row${deleting === category ? ' confirming-delete' : ''}`} key={category} role="listitem">
               {editing === category ? (
                 <form className="category-rename" onSubmit={finishRename}>
                   <input autoFocus value={renameDraft} onChange={(event) => setRenameDraft(event.target.value)} maxLength={16} aria-label={`修改${category}分类名称`} />
@@ -73,18 +75,27 @@ export function CategoryManager({ categories, counts, onAdd, onClose, onDelete, 
               ) : (
                 <div className="category-copy"><strong>{category}</strong><small>{counts[category] || 0} 个网站</small></div>
               )}
-              {editing !== category && (
+              {editing !== category && deleting !== category && (
                 <div className="category-actions">
                   <button type="button" onClick={() => onMove(category, -1)} disabled={index === 0} aria-label={`上移${category}`}><ChevronUp /></button>
                   <button type="button" onClick={() => onMove(category, 1)} disabled={index === categories.length - 1} aria-label={`下移${category}`}><ChevronDown /></button>
                   <button type="button" onClick={() => startRename(category)} aria-label={`重命名${category}`}><Pencil /></button>
-                  <button className="danger" type="button" onClick={() => onDelete(category)} disabled={categories.length === 1} aria-label={`删除${category}`}><Trash2 /></button>
+                  <button className="danger" type="button" onClick={() => setDeleting(category)} disabled={categories.length === 1} aria-label={`删除${category}`}><Trash2 /></button>
+                </div>
+              )}
+              {deleting === category && (
+                <div className="category-delete-confirm" role="alert">
+                  <p>{counts[category] ? `将同时删除其中 ${counts[category]} 个网站，且不会迁移到其他分类。` : '这个分类中没有网站，可以安全删除。'}</p>
+                  <div>
+                    <button className="quiet-button" type="button" onClick={() => setDeleting('')}>取消</button>
+                    <button className="destructive-button" type="button" onClick={() => { onDelete(category); setDeleting(''); }}><Trash2 />{counts[category] ? '删除分类和网站' : '删除分类'}</button>
+                  </div>
                 </div>
               )}
             </div>
           ))}
         </div>
-        <p className="category-hint">删除分类不会删除网站，网站会迁移到相邻分类。</p>
+        <p className="category-hint">删除分类会同时删除其中的网站，操作前会明确显示数量并再次确认。</p>
       </section>
     </ManagedLayer>
   );

@@ -4,6 +4,33 @@ All notable changes to WyanDesk are documented here.
 
 ## [Unreleased]
 
+## [0.2.14] - 2026-10-12
+
+### Added
+
+- Added an on-demand category website check with bounded concurrency, timeout handling, per-site reachability states, progress, and a clear browser-only monitoring boundary.
+
+### Changed
+
+- Deleting a category now explicitly confirms the number of contained websites and removes them instead of silently moving them into a neighboring category.
+- Removing category websites also clears stale recent-use entries and website-group references.
+
+### Verified
+
+- Passed 30 test files / 95 tests, TypeScript checks, the production frontend build, and live browser checks for category deletion confirmation and completed group reachability results.
+
+## [0.2.13] - 2026-10-12
+
+### Changed
+
+- Added privacy-limited page/click/engagement analytics through the same-origin WyanHub endpoint.
+- Routed signed-in feedback to the unified WyanHub feedback center, while retaining the legacy Desk API fallback for older or self-hosted deployments.
+- Added signed, metadata-only central operation auditing to Desk API without changing local-first desktop storage.
+
+### Verified
+
+- Passed the full Desk test suite, TypeScript production build, shared identity/audit SDK tests, and production authorization-boundary checks.
+
 ## [0.2.12] - 2026-10-10
 
 ### Changed

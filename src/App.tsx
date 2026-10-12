@@ -1243,11 +1243,21 @@ function App() {
       return;
     }
     const count = categoryCounts[name] || 0;
-    const detail = count ? `其中 ${count} 个网站会移到“${target}”。` : '';
-    if (!window.confirm(`删除“${name}”分类？${detail}`)) return;
-    updateWorkspace((current) => ({ ...current, ...deleteCategory(current.categories, current.shortcuts, name) }));
+    updateWorkspace((current) => {
+      const { categories: nextCategories, shortcuts: nextShortcuts, deletedShortcutIds } = deleteCategory(current.categories, current.shortcuts, name);
+      const deletedIds = new Set(deletedShortcutIds);
+      return {
+        ...current,
+        categories: nextCategories,
+        shortcuts: nextShortcuts,
+        recentShortcutIds: current.recentShortcutIds.filter((id) => !deletedIds.has(id)),
+        shortcutGroups: current.shortcutGroups
+          .map((group) => ({ ...group, shortcutIds: group.shortcutIds.filter((id) => !deletedIds.has(id)) }))
+          .filter((group) => group.shortcutIds.length > 0),
+      };
+    });
     if (activeCategory === name) setActiveCategory(target);
-    notify(count ? `已删除分类并迁移 ${count} 个网站` : '已删除分类');
+    notify(count ? `已删除“${name}”和其中 ${count} 个网站` : `已删除“${name}”分类`);
   }
 
   function openShortcutModal() {

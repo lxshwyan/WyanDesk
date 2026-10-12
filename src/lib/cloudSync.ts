@@ -84,12 +84,21 @@ export async function deleteCloudState(): Promise<void> {
 }
 
 export async function submitCloudFeedback(message: string, appVersion: string): Promise<void> {
-  const response = await fetch('/api/desk/feedback', {
+  const body = JSON.stringify({ applicationId: 'desk', category: 'bug', message, appVersion });
+  let response = await fetch('/api/feedback', {
     method: 'POST',
     credentials: 'include',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({ message, appVersion }),
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-WyanHub-User': '1' },
+    body,
   });
+  if (response.status === 404) {
+    response = await fetch('/api/desk/feedback', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ message, appVersion }),
+    });
+  }
   if (!response.ok || !isJSON(response)) throw new Error('反馈提交失败，请稍后重试');
 }
 

@@ -27,10 +27,18 @@ describe('category helpers', () => {
     expect(result.shortcuts.find((shortcut) => shortcut.id === 'two')?.category).toBe('资料');
   });
 
-  it('moves shortcuts to the neighboring category before deletion', () => {
+  it('deletes the shortcuts inside a deleted category instead of moving them elsewhere', () => {
     expect(categoryDeleteTarget(['常用', '学习', '生活'], '学习')).toBe('常用');
     const result = deleteCategory(['常用', '学习'], shortcuts, '学习');
     expect(result.categories).toEqual(['常用']);
-    expect(result.shortcuts.every((shortcut) => shortcut.category === '常用')).toBe(true);
+    expect(result.shortcuts).toEqual([shortcuts[0]]);
+    expect(result.deletedShortcutIds).toEqual(['two']);
+  });
+
+  it('keeps the only remaining category intact', () => {
+    const result = deleteCategory(['常用'], shortcuts.slice(0, 1), '常用');
+    expect(result.categories).toEqual(['常用']);
+    expect(result.shortcuts).toEqual(shortcuts.slice(0, 1));
+    expect(result.deletedShortcutIds).toEqual([]);
   });
 });

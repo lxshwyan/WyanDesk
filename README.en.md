@@ -19,12 +19,10 @@
 
 Repositories: [GitHub primary](https://github.com/lxshwyan/WyanDesk) · [Gitee China mirror](https://gitee.com/lxsh_wyan/WyanDesk). Development, issues, and pull requests are tracked on GitHub; Gitee is provided for access and distribution in China.
 
-The official deployment ships with the WyanHub product suite. This repository provides the synchronized standalone open-source code, version tags, and browser extension package for review, download, and self-hosting.
-
 ## Highlights
 
 - Local-first data with optional account sync on the official deployment.
-- Categorized bookmarks, multi-workspace layouts, quick commands, and website groups.
+- Categorized bookmarks, multi-workspace layouts, quick commands, and website groups. Category deletion explicitly confirms and removes its contained sites instead of silently moving them, while an on-demand group check reports browser-level reachability without claiming continuous uptime monitoring.
 - Tasks with either a quick dialog or inline capture, schedules, notes, configurable focus sessions, time events, default workday reminders, custom reminders, sound-backed in-page alerts, optional background system notifications, and opt-in month-calendar, calculator, world-clock, and daily-overview widgets. The overview reuses existing desktop data; world clocks use browser time-zone data only and request no location or external API.
 - A prominent header shortcut for layout editing, a task-first default widget order, two-column widget controls with smooth pointer-following per-workspace drag ordering, adjustable card sizes, frequency-based compact settings, multiple 3D-style scenes, custom backgrounds, reduced motion, and crisp native high-resolution layout/type tiers without whole-page zoom.
 - Predictable dialogs, drawers, and menus with top-layer Escape handling, contained Tab focus, focus restoration, keyboard menu navigation, background scroll locking, and larger mobile touch targets.
