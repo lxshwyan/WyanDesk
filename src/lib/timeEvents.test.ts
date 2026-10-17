@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { describeTimeEvent, isValidDateKey, normalizeTimeEvents } from './timeEvents';
+import { countdownDayDifference, countdownEventsForDisplay, describeTimeEvent, isValidDateKey, normalizeTimeEvents } from './timeEvents';
 
 describe('time events', () => {
   it('counts elapsed days with date-only arithmetic', () => {
@@ -22,5 +22,17 @@ describe('time events', () => {
       { id: 'one', title: '重复', date: '2026-10-11', type: 'elapsed' },
       { id: 'bad', title: '', date: 'not-a-date', type: 'elapsed' },
     ])).toEqual([{ id: 'one', title: '项目 上线', date: '2026-10-10', type: 'countdown', repeatYearly: false }]);
+  });
+
+  it('sorts countdowns by the nearest upcoming target before elapsed targets', () => {
+    const now = new Date(2026, 9, 7);
+    const events = [
+      { id: 'past', title: '已完成', date: '2026-10-01', type: 'countdown' as const, repeatYearly: false },
+      { id: 'later', title: '以后', date: '2026-10-20', type: 'countdown' as const, repeatYearly: false },
+      { id: 'soon', title: '最近', date: '2026-10-09', type: 'countdown' as const, repeatYearly: false },
+      { id: 'elapsed', title: '累计', date: '2026-01-01', type: 'elapsed' as const, repeatYearly: false },
+    ];
+    expect(countdownDayDifference(events[2], now)).toBe(2);
+    expect(countdownEventsForDisplay(events, now).map((event) => event.id)).toEqual(['soon', 'later', 'past']);
   });
 });

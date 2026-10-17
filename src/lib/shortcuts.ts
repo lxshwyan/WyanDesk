@@ -33,6 +33,14 @@ export function moveShortcutInCategory(shortcuts: Shortcut[], id: string, direct
   return next;
 }
 
+export function moveShortcutToCategory(shortcuts: Shortcut[], id: string, category: string): Shortcut[] {
+  const target = category.trim();
+  if (!target) return shortcuts;
+  const shortcut = shortcuts.find((item) => item.id === id);
+  if (!shortcut || shortcut.category === target) return shortcuts;
+  return shortcuts.map((item) => item.id === id ? { ...item, category: target } : item);
+}
+
 export function directURLFromInput(value: string): string {
   const trimmed = value.trim();
   if (!trimmed || /\s/.test(trimmed)) return '';

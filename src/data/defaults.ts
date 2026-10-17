@@ -1,4 +1,5 @@
 import type { DeskState, DeskWorkspace, Shortcut } from '../types';
+import { DEFAULT_QUICK_ACTION_IDS } from '../lib/quickActions';
 import { createDefaultWorkspaceLayout } from '../lib/widgetLayout';
 
 export const categoryOrder = ['常用', '微言服务', 'AI', '办公', '沟通', '云盘', '开发', '设计', '学习', '生活'];
@@ -17,7 +18,7 @@ export const defaultShortcuts: Shortcut[] = [
   { id: 'wyan-events', title: '微言活动', url: 'https://events.wyanhub.com', category: '微言服务', icon: '活', accent: '#d97706', description: '报名、票券与签到' },
   { id: 'wyan-collect', title: '微言收集箱', url: 'https://collect.wyanhub.com', category: '微言服务', icon: '收', accent: '#7c3aed', description: '材料收集与整理' },
   { id: 'wyan-booking', title: '微言预约', url: 'https://booking.wyanhub.com', category: '微言服务', icon: '约', accent: '#0891b2', description: '时段、场地与设备预约' },
-  { id: 'wyan-workflow', title: '微言流程', url: 'https://workflow.wyanhub.com', category: '微言服务', icon: '流', accent: '#db2777', description: '申请、审批与待办' },
+  { id: 'wyan-survey', title: '微言问卷', url: 'https://survey.wyanhub.com', category: '微言服务', icon: '问', accent: '#db2777', description: '问卷设计、发布与分析' },
 
   { id: 'chatgpt', title: 'ChatGPT', url: 'https://chatgpt.com', category: 'AI', icon: 'C', accent: '#10a37f', description: 'AI 助手' },
   { id: 'deepseek', title: 'DeepSeek', url: 'https://chat.deepseek.com', category: 'AI', icon: 'D', accent: '#4d6bfe', description: 'AI 助手' },
@@ -66,6 +67,19 @@ export const defaultShortcuts: Shortcut[] = [
   { id: 'ctrip', title: '携程', url: 'https://www.ctrip.com', category: '生活', icon: '程', accent: '#287dfa', description: '旅行与出行' },
 ];
 
+export const defaultStarterShortcutIds = [
+  'baidu',
+  'mail-163',
+  'bilibili',
+  'railway',
+  'wyanhub',
+  'wyan-tools',
+  'wyan-forms',
+  'wyan-collect',
+] as const;
+
+const defaultStarterShortcutIdSet = new Set<string>(defaultStarterShortcutIds);
+
 function createDefaultWorkspace(
   id: string,
   name: string,
@@ -79,6 +93,7 @@ function createDefaultWorkspace(
     categories: [...categories],
     shortcuts: defaultShortcuts.filter(shortcutFilter).map((item) => ({ ...item })),
     shortcutGroups: [],
+    quickActionIds: [...DEFAULT_QUICK_ACTION_IDS],
     tasks: withWelcomeTask
       ? [{ id: 'welcome-task', text: '整理今天最重要的一件事', done: false, createdAt: new Date().toISOString() }]
       : [],
@@ -90,12 +105,7 @@ function createDefaultWorkspace(
   };
 }
 
-export function createDefaultState(): DeskState {
-  const workspaces = [
-    createDefaultWorkspace('workspace-work', '工作', categoryOrder, () => true, true),
-    createDefaultWorkspace('workspace-study', '学习', ['AI', '学习'], (shortcut) => ['AI', '学习'].includes(shortcut.category)),
-    createDefaultWorkspace('workspace-life', '生活', ['常用', '生活'], (shortcut) => ['常用', '生活'].includes(shortcut.category)),
-  ];
+function createState(workspaces: DeskWorkspace[]): DeskState {
   return {
     version: 8,
     activeWorkspaceId: workspaces[0].id,
@@ -116,18 +126,22 @@ export function createDefaultState(): DeskState {
       lockActivityEnabled: true,
       lockMessage: '',
       compactShortcuts: false,
-      showTasks: true,
+      mobileLayoutPriority: 'tasks',
+      showTasks: false,
       showNotes: true,
-      showReminders: true,
+      showReminders: false,
       showQuickActions: true,
-      showFocusTimer: true,
+      showFocusTimer: false,
       focusDurationMinutes: 25,
-      showSchedule: true,
+      showSchedule: false,
       showCalendar: false,
       showCalculator: false,
       showWorldClock: false,
       worldClockZones: ['Europe/London', 'America/New_York', 'Asia/Tokyo'],
-      showDailyOverview: false,
+      showDailyOverview: true,
+      showWeather: false,
+      showClipboard: false,
+      showCountdown: false,
       showTimeEvents: true,
       showRecent: true,
       systemNotifications: false,
@@ -137,4 +151,24 @@ export function createDefaultState(): DeskState {
       productDiscoveryDismissed: false,
     },
   };
+}
+
+export function createDefaultState(): DeskState {
+  return createState([
+    createDefaultWorkspace(
+      'workspace-main',
+      '我的桌面',
+      ['常用', '微言服务'],
+      (shortcut) => defaultStarterShortcutIdSet.has(shortcut.id),
+      true,
+    ),
+  ]);
+}
+
+export function createBalancedState(): DeskState {
+  return createState([
+    createDefaultWorkspace('workspace-work', '工作', categoryOrder, () => true, true),
+    createDefaultWorkspace('workspace-study', '学习', ['AI', '学习'], (shortcut) => ['AI', '学习'].includes(shortcut.category)),
+    createDefaultWorkspace('workspace-life', '生活', ['常用', '生活'], (shortcut) => ['常用', '生活'].includes(shortcut.category)),
+  ]);
 }

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { migrateDeskState, normalizeURL, parseDeskBackup, readDeskStateWithStatus, readRecoverySnapshot, serializeDeskBackup } from './storage';
+import { clearDeskState, migrateDeskState, normalizeURL, parseDeskBackup, readDeskStateWithStatus, readRecoverySnapshot, serializeDeskBackup } from './storage';
 
 function installMemoryStorage(initial: Record<string, string> = {}) {
   const values = new Map(Object.entries(initial));
@@ -45,6 +45,7 @@ describe('migrateDeskState', () => {
     expect(migrated.workspaces[0].shortcuts.some((item) => item.id === 'tencent-meeting')).toBe(true);
     expect(migrated.workspaces[0].categories).toContain('AI');
     expect(migrated.workspaces[0].events).toEqual([]);
+    expect(migrated.workspaces[0].quickActionIds).toEqual(['new-task', 'new-event', 'start-focus']);
   });
 
   it('does not restore removed defaults after v2 is saved', () => {
@@ -138,7 +139,24 @@ describe('migrateDeskState', () => {
     expect(migrated.workspaces[0].layout.railWidth).toBe('widgets');
     expect(migrated.workspaces[0].layout.widgets.tasks).toEqual({ width: 'wide', height: 'tall' });
     expect(migrated.workspaces[0].layout.widgets.notes).toEqual({ width: 'standard', height: 'standard' });
-    expect(migrated.workspaces[0].layout.widgetOrder).toEqual(['quickActions', 'schedule', 'tasks', 'reminders', 'focus', 'notes', 'calendar', 'calculator', 'worldClock', 'dailyOverview']);
+    expect(migrated.workspaces[0].layout.widgetOrder).toEqual(['quickActions', 'dailyOverview', 'notes', 'weather', 'countdown', 'clipboard', 'schedule', 'tasks', 'reminders', 'focus', 'calendar', 'calculator', 'worldClock']);
+  });
+
+  it('preserves three unique quick actions and repairs an empty selection', () => {
+    const configured = migrateDeskState({
+      version: 8,
+      workspaces: [{
+        id: 'work', name: '工作', categories: ['常用'], shortcuts: [], tasks: [], note: '',
+        quickActionIds: ['open-shortcut-docs', 'open-group-work', 'open-shortcut-docs', 'new-task'],
+      }],
+    });
+    const repaired = migrateDeskState({
+      version: 8,
+      workspaces: [{ id: 'work', name: '工作', categories: ['常用'], shortcuts: [], tasks: [], note: '', quickActionIds: [] }],
+    });
+
+    expect(configured.workspaces[0].quickActionIds).toEqual(['open-shortcut-docs', 'open-group-work', 'new-task']);
+    expect(repaired.workspaces[0].quickActionIds).toEqual(['new-task', 'new-event', 'start-focus']);
   });
 
   it('defaults lock activity records on while preserving an explicit opt-out', () => {
@@ -179,7 +197,29 @@ describe('migrateDeskState', () => {
     expect(invalid.preferences.focusDurationMinutes).toBe(25);
   });
 
-  it('keeps new optional widgets hidden unless the user enables them', () => {
+  it('uses a task-first mobile layout and preserves the sites-first choice', () => {
+    const defaults = migrateDeskState({
+      version: 8,
+      workspaces: [{ id: 'work', name: '工作', categories: ['常用'], shortcuts: [], tasks: [], note: '' }],
+      preferences: {},
+    });
+    const sitesFirst = migrateDeskState({
+      version: 8,
+      workspaces: [{ id: 'work', name: '工作', categories: ['常用'], shortcuts: [], tasks: [], note: '' }],
+      preferences: { mobileLayoutPriority: 'sites' },
+    });
+    const invalid = migrateDeskState({
+      version: 8,
+      workspaces: [{ id: 'work', name: '工作', categories: ['常用'], shortcuts: [], tasks: [], note: '' }],
+      preferences: { mobileLayoutPriority: 'unknown' },
+    });
+
+    expect(defaults.preferences.mobileLayoutPriority).toBe('tasks');
+    expect(sitesFirst.preferences.mobileLayoutPriority).toBe('sites');
+    expect(invalid.preferences.mobileLayoutPriority).toBe('tasks');
+  });
+
+  it('uses the quiet default widget set while preserving explicit saved choices', () => {
     const defaults = migrateDeskState({
       version: 8,
       workspaces: [{ id: 'work', name: '工作', categories: ['常用'], shortcuts: [], tasks: [], note: '' }],
@@ -190,16 +230,33 @@ describe('migrateDeskState', () => {
       workspaces: [{ id: 'work', name: '工作', categories: ['常用'], shortcuts: [], tasks: [], note: '' }],
       preferences: { showCalendar: true, showCalculator: true, showWorldClock: true, worldClockZones: ['Asia/Tokyo'], showDailyOverview: true },
     });
+    const existing = migrateDeskState({
+      version: 8,
+      workspaces: [{ id: 'work', name: '工作', categories: ['常用'], shortcuts: [], tasks: [], note: '' }],
+      preferences: { showTasks: true, showSchedule: true, showReminders: true, showFocusTimer: true, showDailyOverview: false },
+    });
 
     expect(defaults.preferences.showCalendar).toBe(false);
     expect(defaults.preferences.showCalculator).toBe(false);
     expect(defaults.preferences.showWorldClock).toBe(false);
-    expect(defaults.preferences.showDailyOverview).toBe(false);
+    expect(defaults.preferences.showDailyOverview).toBe(true);
+    expect(defaults.preferences.showTasks).toBe(false);
+    expect(defaults.preferences.showSchedule).toBe(false);
+    expect(defaults.preferences.showReminders).toBe(false);
+    expect(defaults.preferences.showFocusTimer).toBe(false);
+    expect(defaults.preferences.showWeather).toBe(false);
+    expect(defaults.preferences.showClipboard).toBe(false);
+    expect(defaults.preferences.showCountdown).toBe(false);
     expect(enabled.preferences.showCalendar).toBe(true);
     expect(enabled.preferences.showCalculator).toBe(true);
     expect(enabled.preferences.showWorldClock).toBe(true);
     expect(enabled.preferences.worldClockZones).toEqual(['Asia/Tokyo']);
     expect(enabled.preferences.showDailyOverview).toBe(true);
+    expect(existing.preferences.showTasks).toBe(true);
+    expect(existing.preferences.showSchedule).toBe(true);
+    expect(existing.preferences.showReminders).toBe(true);
+    expect(existing.preferences.showFocusTimer).toBe(true);
+    expect(existing.preferences.showDailyOverview).toBe(false);
   });
 });
 
@@ -238,6 +295,20 @@ describe('desk backup', () => {
 
   it('rejects unrelated JSON files', () => {
     expect(() => parseDeskBackup('{"hello":"world"}')).toThrow('不是可识别的 WyanDesk 备份');
+  });
+});
+
+describe('clearDeskState', () => {
+  it('clears the main desktop and local-only widget data together', () => {
+    const values = installMemoryStorage({
+      'wyandesk.state.v1': '{}',
+      'wyandesk.weather.v1': '{}',
+      'wyandesk.clipboard.v1': '[]',
+    });
+    clearDeskState();
+    expect(values.has('wyandesk.state.v1')).toBe(false);
+    expect(values.has('wyandesk.weather.v1')).toBe(false);
+    expect(values.has('wyandesk.clipboard.v1')).toBe(false);
   });
 });
 

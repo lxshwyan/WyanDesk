@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+
+Sitemap: https://desk.wyanhub.com/sitemap.xml
+Host: desk.wyanhub.com

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Shortcut } from '../types';
-import { directURLFromInput, moveShortcutInCategory, shortcutURLExists } from './shortcuts';
+import { directURLFromInput, moveShortcutInCategory, moveShortcutToCategory, shortcutURLExists } from './shortcuts';
 
 const shortcuts: Shortcut[] = [
   { id: 'a', title: 'A', url: 'https://a.example/', category: '工作', icon: 'A', accent: '#000' },
@@ -12,6 +12,13 @@ describe('shortcut helpers', () => {
   it('moves a shortcut only within its category order', () => {
     expect(moveShortcutInCategory(shortcuts, 'b', -1).map((item) => item.id)).toEqual(['b', 'x', 'a']);
     expect(moveShortcutInCategory(shortcuts, 'a', -1)).toBe(shortcuts);
+  });
+
+  it('moves a shortcut to another category without changing the other items', () => {
+    const next = moveShortcutToCategory(shortcuts, 'a', '生活');
+    expect(next.map((item) => `${item.id}:${item.category}`)).toEqual(['a:生活', 'x:生活', 'b:工作']);
+    expect(moveShortcutToCategory(shortcuts, 'a', '工作')).toBe(shortcuts);
+    expect(moveShortcutToCategory(shortcuts, 'missing', '生活')).toBe(shortcuts);
   });
 
   it('detects normalized duplicate URLs while allowing the edited item', () => {

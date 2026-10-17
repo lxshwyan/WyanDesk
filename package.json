@@ -1,7 +1,7 @@
 {
   "name": "wyan-desk",
   "private": true,
-  "version": "0.2.14",
+  "version": "0.4.4",
   "description": "Local-first browser desktop for bookmarks, tasks, notes, schedules, focus sessions and reminders.",
   "license": "MIT",
   "homepage": "https://desk.wyanhub.com",
@@ -26,9 +26,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && vite build && node scripts/inject-pwa-assets.mjs && node scripts/validate-seo.mjs",
     "build:extension": "npm run build && node scripts/build-extension.mjs",
-    "package:extension": "npm run build:extension && sh scripts/package-extension.sh",
+    "validate:extension": "node scripts/validate-extension.mjs",
+    "validate:pwa": "node scripts/validate-pwa.mjs",
+    "validate:seo": "node scripts/validate-seo.mjs",
+    "package:extension": "npm run build:extension && npm run validate:extension && sh scripts/package-extension.sh",
     "test": "vitest run",
     "typecheck": "tsc --noEmit --pretty false"
   },

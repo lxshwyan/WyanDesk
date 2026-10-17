@@ -2,16 +2,159 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#e7eef8" />
-    <meta name="description" content="微言桌面 WyanDesk，你的网站、任务、便签和工作提醒。" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="微言桌面" />
+    <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1" />
+    <meta name="description" content="WyanDesk 是本地优先的浏览器桌面，把常用网站、任务、日程、便签、提醒、专注计时和可选云同步集中在一个安静、可定制的工作台。" />
+    <meta property="og:title" content="WyanDesk｜本地优先的浏览器桌面与效率工作台" />
+    <meta property="og:description" content="整理常用网站、任务、日程与便签；无需登录即可使用，可按需开启 PWA、浏览器扩展和端到端加密云同步。" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="WyanDesk" />
+    <meta property="og:locale" content="zh_CN" />
+    <meta property="og:url" content="https://desk.wyanhub.com/" />
+    <meta property="og:image" content="https://desk.wyanhub.com/pwa-512.png" />
+    <meta property="og:image:width" content="512" />
+    <meta property="og:image:height" content="512" />
+    <meta property="og:image:alt" content="微言桌面 WyanDesk Logo" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="WyanDesk｜本地优先的浏览器桌面与效率工作台" />
+    <meta name="twitter:description" content="整理常用网站、任务、日程与便签；无需登录即可使用，可按需开启同步。" />
+    <meta name="twitter:image" content="https://desk.wyanhub.com/pwa-512.png" />
+    <meta name="twitter:image:alt" content="微言桌面 WyanDesk Logo" />
+    <link rel="canonical" href="https://desk.wyanhub.com/" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <link rel="apple-touch-icon" href="/pwa-192.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="/pwa-192.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <title>微言桌面 WyanDesk</title>
+    <title>WyanDesk｜本地优先的浏览器桌面与效率工作台</title>
+    <script>
+      (() => {
+        const documentRoot = document.documentElement;
+        documentRoot.classList.add('js');
+        window.setTimeout(() => {
+          const mountPoint = document.getElementById('root');
+          if (mountPoint?.querySelector('.seo-fallback')) documentRoot.classList.add('seo-fallback-timeout');
+        }, 5000);
+      })();
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "WyanDesk",
+        "alternateName": "微言桌面",
+        "url": "https://desk.wyanhub.com/",
+        "image": "https://desk.wyanhub.com/pwa-512.png",
+        "description": "本地优先的浏览器桌面，用于整理常用网站、任务、日程、便签、提醒和专注计时。",
+        "applicationCategory": "ProductivityApplication",
+        "operatingSystem": "任何支持现代浏览器的系统",
+        "inLanguage": "zh-CN",
+        "isPartOf": {
+          "@type": "WebSite",
+          "name": "WyanHub 微言工作空间",
+          "url": "https://wyanhub.com/"
+        },
+        "sameAs": [
+          "https://github.com/lxshwyan/WyanDesk",
+          "https://gitee.com/lxsh_wyan/WyanDesk"
+        ]
+      }
+    </script>
+    <style>
+      html, body, #root {
+        min-width: 320px;
+        min-height: 100%;
+        margin: 0;
+        background: #e8eef7;
+      }
+      .seo-fallback {
+        min-height: 100vh;
+        min-height: 100dvh;
+        box-sizing: border-box;
+        display: grid;
+        place-items: center;
+        padding: 32px 20px;
+        color: #172033;
+        background: #e8eef7;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      }
+      html.js:not(.seo-fallback-timeout) .seo-fallback { display: none; }
+      .seo-fallback *, .seo-fallback *::before, .seo-fallback *::after { box-sizing: border-box; }
+      .seo-fallback__skip {
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        z-index: 1;
+        padding: 9px 12px;
+        border-radius: 9px;
+        color: #ffffff;
+        background: #2468d8;
+        transform: translateY(-160%);
+      }
+      .seo-fallback__skip:focus { transform: translateY(0); }
+      .seo-fallback__skip:hover { color: #ffffff; background: #1959c1; }
+      .seo-fallback__main {
+        width: min(720px, 100%);
+        padding: 40px;
+        border: 1px solid rgba(94, 116, 148, .16);
+        border-radius: 18px;
+        background: rgba(252, 253, 255, .95);
+        box-shadow: 0 18px 52px rgba(20, 33, 55, .12);
+      }
+      .seo-fallback__brand { display: flex; align-items: center; gap: 18px; }
+      .seo-fallback__logo { width: 72px; height: 72px; flex: 0 0 auto; border-radius: 14px; }
+      .seo-fallback h1 { margin: 0; font-size: 20px; line-height: 1.25; letter-spacing: -.03em; text-wrap: balance; scroll-margin-top: 24px; }
+      .seo-fallback__subtitle { margin: 7px 0 0; color: #5f6f84; font-size: 16px; line-height: 1.5; }
+      .seo-fallback__summary { margin: 28px 0 0; max-width: 68ch; font-size: 16px; line-height: 1.75; text-wrap: pretty; }
+      .seo-fallback h2 { margin: 30px 0 12px; font-size: 16px; line-height: 1.35; text-wrap: balance; scroll-margin-top: 24px; }
+      .seo-fallback ul { margin: 0; padding-left: 1.25rem; color: #5f6f84; line-height: 1.75; }
+      .seo-fallback__links { display: flex; flex-wrap: wrap; gap: 10px 18px; margin-top: 28px; }
+      .seo-fallback a { color: #2468d8; text-decoration-thickness: 1px; text-underline-offset: 4px; touch-action: manipulation; -webkit-tap-highlight-color: rgba(36, 104, 216, .18); }
+      .seo-fallback a:hover { color: #1959c1; }
+      .seo-fallback a:focus-visible { outline: 3px solid rgba(36, 104, 216, .3); outline-offset: 3px; border-radius: 9px; }
+      .seo-fallback__foot { margin: 28px 0 0; color: #5f6f84; font-size: 12px; line-height: 1.6; }
+      @media (max-width: 620px) {
+        .seo-fallback { padding: 14px; place-items: start center; }
+        .seo-fallback__main { padding: 26px 22px; border-radius: 14px; }
+        .seo-fallback__brand { align-items: flex-start; }
+        .seo-fallback__logo { width: 56px; height: 56px; border-radius: 12px; }
+      }
+      @media (prefers-reduced-motion: reduce) { .seo-fallback { scroll-behavior: auto; } }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="seo-fallback">
+        <a class="seo-fallback__skip" href="#seo-main">跳到产品介绍</a>
+        <main class="seo-fallback__main" id="seo-main" aria-labelledby="seo-title">
+          <header class="seo-fallback__brand">
+            <img class="seo-fallback__logo" src="/pwa-192.png" width="72" height="72" alt="WyanDesk 图标" fetchpriority="high" />
+            <div>
+              <h1 id="seo-title" translate="no">WyanDesk</h1>
+              <p class="seo-fallback__subtitle">微言桌面 · 本地优先的浏览器桌面</p>
+            </div>
+          </header>
+          <p class="seo-fallback__summary">把常用网站、任务、日程、便签、提醒和专注计时放在一个安静、可定制的工作台。无需登录即可使用，核心桌面数据默认保存在当前浏览器。</p>
+          <section aria-labelledby="seo-features">
+            <h2 id="seo-features">一个页面，整理每天要用的内容</h2>
+            <ul>
+              <li>集中管理常用网站、网站组合、任务、日程、便签与提醒。</li>
+              <li>支持浏览器书签、ICS 日历和桌面备份的导入导出。</li>
+              <li>可安装为 PWA，也可通过浏览器扩展快速保存网页和窗口会话。</li>
+              <li>登录后可按需开启云同步、历史恢复和端到端加密，不登录仍可完整使用本地桌面。</li>
+            </ul>
+          </section>
+          <nav class="seo-fallback__links" aria-label="WyanDesk 相关链接">
+            <a href="https://wyanhub.com/">了解 WyanHub</a>
+            <a href="https://github.com/lxshwyan/WyanDesk">查看 WyanDesk 开源项目</a>
+          </nav>
+          <noscript><p class="seo-fallback__summary">请开启 JavaScript 使用交互式桌面；上面的产品介绍和相关链接仍可直接阅读。</p></noscript>
+          <p class="seo-fallback__foot">WyanDesk 不会因为打开页面就上传本机桌面数据。<a href="https://beian.miit.gov.cn/" rel="nofollow">鄂ICP备2023002649号-3</a></p>
+        </main>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

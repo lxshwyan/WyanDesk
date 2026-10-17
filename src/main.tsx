@@ -7,9 +7,3 @@ import './styles.css';
 
 installUsageAnalytics();
 createRoot(document.getElementById('root')!).render(<StrictMode><AppErrorBoundary><App /></AppErrorBoundary></StrictMode>);
-
-if ('serviceWorker' in navigator && import.meta.env.PROD && window.location.protocol !== 'chrome-extension:') {
-  window.addEventListener('load', () => {
-    void navigator.serviceWorker.register('/sw.js', { scope: '/' });
-  });
-}

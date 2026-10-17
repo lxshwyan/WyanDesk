@@ -1,4 +1,4 @@
-import { BookMarked, Check, Download, Layers3, LayoutGrid, SkipForward, Sparkles, X } from 'lucide-react';
+import { BookMarked, Check, Cloud, Download, Layers3, LayoutGrid, ListChecks, Search, SkipForward, Sparkles, X } from 'lucide-react';
 import { useState, type ChangeEvent } from 'react';
 import { ManagedLayer } from './ManagedLayer';
 
@@ -13,7 +13,7 @@ interface OnboardingModalProps {
 
 export function OnboardingModal({ extensionInstalled, onComplete, onImportBookmarks, onTemplate }: OnboardingModalProps) {
   const [step, setStep] = useState(0);
-  const [template, setTemplate] = useState<DeskTemplate>('balanced');
+  const [template, setTemplate] = useState<DeskTemplate>('simple');
 
   function chooseTemplate(value: DeskTemplate) {
     setTemplate(value);
@@ -25,15 +25,23 @@ export function OnboardingModal({ extensionInstalled, onComplete, onImportBookma
       <section className="shortcut-modal onboarding-modal" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle">
         <div className="onboarding-progress" aria-label={`第 ${step + 1} 步，共 3 步`}><i className={step >= 0 ? 'active' : ''} /><i className={step >= 1 ? 'active' : ''} /><i className={step >= 2 ? 'active' : ''} /></div>
         <div className="modal-heading">
-          <div><span className="modal-icon"><Sparkles /></span><div><h2 id="onboardingTitle">{step === 0 ? '选择你的桌面起点' : step === 1 ? '带入已有书签' : '让桌面每天自然出现'}</h2><p>{step === 0 ? '之后随时可以调整' : step === 1 ? '可跳过，不会覆盖现有内容' : '最后一步，也可以稍后完成'}</p></div></div>
+          <div><span className="modal-icon"><Sparkles /></span><div><h2 id="onboardingTitle">{step === 0 ? '你的个人效率桌面' : step === 1 ? '带入已有书签' : '让桌面每天自然出现'}</h2><p>{step === 0 ? '常用网站、今日任务和提醒，打开浏览器就能用' : step === 1 ? '可跳过，不会覆盖现有内容' : '最后一步，也可以稍后完成'}</p></div></div>
           <button className="icon-button" type="button" onClick={onComplete} aria-label="跳过首次引导"><X /></button>
         </div>
 
         {step === 0 && (
-          <div className="template-grid">
-            <button className={template === 'balanced' ? 'active' : ''} type="button" onClick={() => chooseTemplate('balanced')}><Layers3 /><span><strong>工作 · 学习 · 生活</strong><small>推荐，常用网站已经分类</small></span>{template === 'balanced' && <Check />}</button>
-            <button className={template === 'simple' ? 'active' : ''} type="button" onClick={() => chooseTemplate('simple')}><LayoutGrid /><span><strong>简洁单桌面</strong><small>只保留一个工作桌面</small></span>{template === 'simple' && <Check />}</button>
-            <button className={template === 'blank' ? 'active' : ''} type="button" onClick={() => chooseTemplate('blank')}><Sparkles /><span><strong>空白开始</strong><small>从自己的分类和网站开始</small></span>{template === 'blank' && <Check />}</button>
+          <div className="onboarding-start">
+            <div className="onboarding-purpose" aria-label="微言桌面主要用途">
+              <div><Search /><span><strong>快速到达</strong><small>搜索和常用网站</small></span></div>
+              <div><ListChecks /><span><strong>安排今天</strong><small>任务、日程和提醒</small></span></div>
+              <div><Cloud /><span><strong>本机可用</strong><small>登录后可跨设备同步</small></span></div>
+            </div>
+            <p className="onboarding-choice-label">选一个起点，以后随时可以调整</p>
+            <div className="template-grid">
+              <button className={template === 'simple' ? 'active' : ''} type="button" onClick={() => chooseTemplate('simple')}><LayoutGrid /><span><strong>简洁单桌面</strong><small>推荐，只保留常用入口</small></span>{template === 'simple' && <Check />}</button>
+              <button className={template === 'balanced' ? 'active' : ''} type="button" onClick={() => chooseTemplate('balanced')}><Layers3 /><span><strong>工作 · 学习 · 生活</strong><small>按场景预置三个桌面</small></span>{template === 'balanced' && <Check />}</button>
+              <button className={template === 'blank' ? 'active' : ''} type="button" onClick={() => chooseTemplate('blank')}><Sparkles /><span><strong>空白开始</strong><small>从自己的分类和网站开始</small></span>{template === 'blank' && <Check />}</button>
+            </div>
           </div>
         )}
 

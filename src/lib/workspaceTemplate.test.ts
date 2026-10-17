@@ -13,6 +13,7 @@ describe('workspace templates', () => {
     const restored = parseWorkspaceTemplate(text, 'imported');
     expect(restored.id).toBe('imported');
     expect(restored.shortcuts.length).toBe(source.shortcuts.length);
+    expect(restored.quickActionIds).toEqual(source.quickActionIds);
     expect(restored.tasks).toEqual([]);
     expect(restored.note).toBe('');
   });

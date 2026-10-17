@@ -1,9 +1,10 @@
 export type SceneId = 'dawn' | 'ocean' | 'night' | 'cyber';
 export type SearchEngine = 'baidu' | 'bing';
+export type MobileLayoutPriority = 'tasks' | 'sites';
 
-export type DeskWidgetId = 'shortcuts' | 'quickActions' | 'schedule' | 'focus' | 'reminders' | 'tasks' | 'notes' | 'calendar' | 'calculator' | 'worldClock' | 'dailyOverview';
+export type DeskWidgetId = 'shortcuts' | 'quickActions' | 'schedule' | 'focus' | 'reminders' | 'tasks' | 'notes' | 'calendar' | 'calculator' | 'worldClock' | 'dailyOverview' | 'weather' | 'clipboard' | 'countdown';
 export type DeskRailWidgetId = Exclude<DeskWidgetId, 'shortcuts'>;
-export type DeskWidgetWidth = 'standard' | 'wide';
+export type DeskWidgetWidth = 'standard' | 'medium' | 'wide';
 export type DeskWidgetHeight = 'compact' | 'standard' | 'tall';
 export type DeskRailWidth = 'sites' | 'balanced' | 'widgets';
 
@@ -85,6 +86,7 @@ export interface DeskPreferences {
   lockActivityEnabled: boolean;
   lockMessage: string;
   compactShortcuts: boolean;
+  mobileLayoutPriority: MobileLayoutPriority;
   showTasks: boolean;
   showNotes: boolean;
   showReminders: boolean;
@@ -97,6 +99,9 @@ export interface DeskPreferences {
   showWorldClock: boolean;
   worldClockZones: string[];
   showDailyOverview: boolean;
+  showWeather: boolean;
+  showClipboard: boolean;
+  showCountdown: boolean;
   showTimeEvents: boolean;
   showRecent: boolean;
   systemNotifications: boolean;
@@ -112,6 +117,7 @@ export interface DeskWorkspace {
   categories: string[];
   shortcuts: Shortcut[];
   shortcutGroups: ShortcutGroup[];
+  quickActionIds: string[];
   tasks: DeskTask[];
   focusTaskId: string;
   note: string;

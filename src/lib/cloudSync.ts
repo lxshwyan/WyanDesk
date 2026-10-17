@@ -52,13 +52,22 @@ export async function fetchCloudUser(): Promise<CloudUser | null> {
   return response.json() as Promise<CloudUser>;
 }
 
+export async function logoutCloudSession(): Promise<void> {
+  const response = await fetch('/api/auth/logout', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { Accept: 'application/json' },
+  });
+  if (!response.ok || !isJSON(response)) throw new Error('退出失败，请稍后重试');
+}
+
 export async function fetchCloudState(): Promise<CloudEnvelope> {
   const response = await fetch('/api/desk/state', { credentials: 'include', headers: { Accept: 'application/json' } });
   if (!response.ok || !isJSON(response)) throw new Error('暂时无法读取云端数据');
   return response.json() as Promise<CloudEnvelope>;
 }
 
-export async function putCloudState(state: DeskState, baseVersion: number): Promise<CloudEnvelope> {
+export async function putCloudState(state: unknown, baseVersion: number): Promise<CloudEnvelope> {
   const response = await fetch('/api/desk/state', {
     method: 'PUT',
     credentials: 'include',

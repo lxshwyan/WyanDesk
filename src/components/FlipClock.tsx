@@ -1,3 +1,6 @@
+import { useEffect, useState } from 'react';
+import { SECOND_MS, startAlignedClock } from '../lib/alignedClock';
+
 interface FlipDigitProps {
   value: string;
 }
@@ -18,7 +21,11 @@ function FlipPair({ value }: { value: string }) {
   );
 }
 
-export function FlipClock({ value }: { value: Date }) {
+export function FlipClock() {
+  const [value, setValue] = useState(() => new Date());
+
+  useEffect(() => startAlignedClock(SECOND_MS, setValue), []);
+
   const hours = String(value.getHours()).padStart(2, '0');
   const minutes = String(value.getMinutes()).padStart(2, '0');
   const seconds = String(value.getSeconds()).padStart(2, '0');

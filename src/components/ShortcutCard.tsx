@@ -1,11 +1,12 @@
-import type { CSSProperties, PointerEvent } from 'react';
-import { ExternalLink } from 'lucide-react';
+import type { CSSProperties, MouseEvent, PointerEvent } from 'react';
+import { MoreVertical } from 'lucide-react';
 import type { Shortcut } from '../types';
 
 interface ShortcutCardProps {
   shortcut: Shortcut;
   compact: boolean;
   onOpen: (shortcut: Shortcut) => void;
+  onContextMenu: (shortcut: Shortcut, position: { x: number; y: number }) => void;
 }
 
 function shortcutDescription(shortcut: Shortcut): string {
@@ -17,7 +18,7 @@ function shortcutDescription(shortcut: Shortcut): string {
   }
 }
 
-export function ShortcutCard({ shortcut, compact, onOpen }: ShortcutCardProps) {
+export function ShortcutCard({ shortcut, compact, onOpen, onContextMenu }: ShortcutCardProps) {
   function updateHighlight(event: PointerEvent<HTMLElement>) {
     const bounds = event.currentTarget.getBoundingClientRect();
     const x = ((event.clientX - bounds.left) / bounds.width) * 100;
@@ -28,16 +29,27 @@ export function ShortcutCard({ shortcut, compact, onOpen }: ShortcutCardProps) {
 
   const style = { '--shortcut-color': shortcut.accent } as CSSProperties;
 
+  function showContextMenu(event: MouseEvent<HTMLElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const fromKeyboard = event.clientX === 0 && event.clientY === 0;
+    onContextMenu(shortcut, {
+      x: fromKeyboard ? bounds.left + Math.min(bounds.width - 18, 72) : event.clientX,
+      y: fromKeyboard ? bounds.top + Math.min(bounds.height - 12, 44) : event.clientY,
+    });
+  }
+
   return (
-    <article className={`shortcut-card${compact ? ' compact' : ''}${shortcut.featured ? ' featured' : ''}`} style={style} onPointerMove={updateHighlight}>
+    <article className={`shortcut-card${compact ? ' compact' : ''}${shortcut.featured ? ' featured' : ''}`} style={style} onPointerMove={updateHighlight} onContextMenu={showContextMenu}>
       <a href={shortcut.url} target="_blank" rel="noreferrer" aria-label={`打开 ${shortcut.title}`} onClick={() => onOpen(shortcut)}>
         <span className="shortcut-icon">{shortcut.icon}</span>
         <span className="shortcut-copy">
           <strong>{shortcut.title}</strong>
           {!compact && <small>{shortcutDescription(shortcut)}</small>}
         </span>
-        <ExternalLink className="shortcut-open" aria-hidden="true" />
       </a>
+      <button className="shortcut-more" type="button" aria-label={`管理 ${shortcut.title}`} aria-haspopup="menu" onClick={showContextMenu}><MoreVertical aria-hidden="true" /></button>
     </article>
   );
 }

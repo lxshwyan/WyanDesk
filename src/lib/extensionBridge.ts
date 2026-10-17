@@ -16,6 +16,7 @@ export interface ExtensionSummary {
 
 export interface ExtensionCaptureItem {
   id: string;
+  kind?: 'link' | 'task' | 'note';
   title: string;
   url: string;
   workspaceId: string;
@@ -146,15 +147,33 @@ function addCategory(workspace: DeskWorkspace, category: string): DeskWorkspace 
   return workspace.categories.includes(category) ? workspace : { ...workspace, categories: [...workspace.categories, category] };
 }
 
-export function applyExtensionCaptures(state: DeskState, queue: ExtensionCaptureQueue): { state: DeskState; addedSites: number; addedGroups: number } {
+export function applyExtensionCaptures(state: DeskState, queue: ExtensionCaptureQueue): { state: DeskState; addedSites: number; addedGroups: number; addedTasks: number; addedNotes: number } {
   let addedSites = 0;
   let addedGroups = 0;
+	let addedTasks = 0;
+	let addedNotes = 0;
   const workspaces = state.workspaces.map((workspace) => {
     let next = workspace;
     const captures = queue.items.filter((item) => item.workspaceId === workspace.id);
     for (const item of captures) {
       const url = normalized(item.url);
-      if (!url || next.shortcuts.some((shortcut) => normalized(shortcut.url) === url)) continue;
+		if (!url) continue;
+		if (item.kind === 'task') {
+			const taskID = `extension-task-${item.id}`;
+			if (next.tasks.some((task) => task.id === taskID)) continue;
+			const text = `${item.title.trim().slice(0, 120) || new URL(url).hostname} — ${url}`;
+			next = { ...next, tasks: [{ id: taskID, text, done: false, createdAt: new Date().toISOString() }, ...next.tasks] };
+			addedTasks += 1;
+			continue;
+		}
+		if (item.kind === 'note') {
+			if (next.note.includes(url)) continue;
+			const note = `${item.title.trim().slice(0, 120) || new URL(url).hostname}\n${url}`;
+			next = { ...next, note: [next.note.trim(), note].filter(Boolean).join('\n\n') };
+			addedNotes += 1;
+			continue;
+		}
+		if (next.shortcuts.some((shortcut) => normalized(shortcut.url) === url)) continue;
       const category = item.category.trim().slice(0, 16) || next.categories[0] || '常用';
       next = addCategory(next, category);
       next = { ...next, shortcuts: [...next.shortcuts, shortcutFor(`extension-${item.id}`, item.title, url, category)] };
@@ -202,5 +221,5 @@ export function applyExtensionCaptures(state: DeskState, queue: ExtensionCapture
     }
     return next;
   });
-  return { state: { ...state, workspaces }, addedSites, addedGroups };
+  return { state: { ...state, workspaces }, addedSites, addedGroups, addedTasks, addedNotes };
 }

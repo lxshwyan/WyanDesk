@@ -7,6 +7,7 @@ interface InboxModalProps {
   items: DeskInboxItem[];
   workspaces: DeskWorkspace[];
   activeWorkspaceId: string;
+  initialKind?: DeskInboxItem['kind'];
   onAdd: (kind: DeskInboxItem['kind'], content: string) => boolean;
   onClose: () => void;
   onDelete: (item: DeskInboxItem) => void;
@@ -19,8 +20,8 @@ const kindMeta = {
   note: { label: '想法', icon: <StickyNote /> },
 };
 
-export function InboxModal({ items, workspaces, activeWorkspaceId, onAdd, onClose, onDelete, onOrganize }: InboxModalProps) {
-  const [kind, setKind] = useState<DeskInboxItem['kind']>('note');
+export function InboxModal({ items, workspaces, activeWorkspaceId, initialKind = 'note', onAdd, onClose, onDelete, onOrganize }: InboxModalProps) {
+  const [kind, setKind] = useState<DeskInboxItem['kind']>(initialKind);
   const [content, setContent] = useState('');
   const [workspaceId, setWorkspaceId] = useState(activeWorkspaceId);
   const workspace = useMemo(() => workspaces.find((item) => item.id === workspaceId) || workspaces[0], [workspaceId, workspaces]);

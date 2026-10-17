@@ -4,6 +4,99 @@ All notable changes to WyanDesk are documented here.
 
 ## [Unreleased]
 
+## [0.4.4] - 2026-10-17
+
+### Added
+
+- Added a task-first mobile home order with an optional sites-first preference in Component Layout.
+- Added a concise product-purpose introduction to first-run onboarding and a replayable guide under About & Support.
+
+### Changed
+
+- Limited the initial mobile shortcut view to four sites with an explicit expand action.
+- Moved shortcuts below the configurable work widgets in the default phone layout while keeping the desktop layout unchanged.
+- Replaced the desktop brand subtitle with the clearer “个人效率桌面” positioning.
+
+### Verified
+
+- Passed 44 test files / 160 tests, TypeScript checks, the production build, PWA/SEO validation, and desktop plus 390 × 844 mobile browser checks.
+
+## [0.4.3] - 2026-10-16
+
+### Fixed
+
+- Prevented the static SEO product introduction from flashing before the React desktop on JavaScript-capable browsers, while retaining the full no-JavaScript page and restoring it automatically when the application bundle cannot take over.
+- Advanced the PWA shell cache so the new startup document and hashed runtime assets replace the previous cached shell cleanly.
+
+### Verified
+
+- Passed 44 test files / 159 tests, TypeScript checks, the production build, SEO and PWA validators, plus browser checks for the guarded first paint, five-second failure fallback, normal React takeover and a clean console.
+
+## [0.4.1] - 2026-10-16
+
+### Fixed
+
+- Added a direct “退出账号” action for signed-in users. It clears the shared WyanHub login session, returns to the local desktop, and keeps browser-local desktop data intact.
+
+## [0.4.0] - 2026-10-16
+
+### Added
+
+- Added a unified WyanHub assistant with product knowledge, task-aware model routing, optional web search, cited sources, answer feedback, quota visibility, and a compact production-ready drawer experience.
+- Added new-user desktop defaults, PWA install/update surfaces, weather, local clipboard and countdown widgets, category navigation, aligned clocks, and clearer local-to-cloud conflict actions.
+- Added a complete install surface for Chromium and Android plus accurate Safari Add to Home Screen guidance for iPhone and iPad, without requesting device folder access.
+- Added build-time injection and validation of the actual hashed runtime assets required for first-session offline reopening.
+
+### Changed
+
+- PWA updates now wait for user confirmation, show a non-blocking update notice, and reload only after the waiting worker is explicitly activated.
+- The footer reports offline local persistence, while Settings distinguishes a registered worker from a page that is actually under Service Worker control.
+- Desktop work cards in the same grid row now stretch to a shared height with a tighter 12px rhythm. Expanding a left-column card keeps it in the first left slot, while expanding a right-column card keeps it in the first right slot; surrounding cards pack around the primary card without changing the saved order.
+- Widget width editing now exposes only the two layouts that are visually distinct in the stable two-column grid: single column and full row. Older saved medium-width values remain readable as full-row cards.
+
+### Fixed
+
+- Matched same-origin precached assets independently of `Vary: Origin`, so install-time cache entries are reused by module and stylesheet requests while offline.
+- Kept `/api/*` outside the app-shell fallback in both the Service Worker and bundled Nginx configuration.
+
+### Verified
+
+- Passed first-controlled-session offline reopen checks on 1280px desktop and 390px iPhone emulation, iOS install-copy and overflow checks, a real waiting-worker update from cache v8 to v9, the PWA artifact validator, the complete test suite, TypeScript, production build, and extension validation.
+- Passed 41 test files / 150 tests, TypeScript checks, production and extension builds, PWA and extension validators, the layout detector, 320/390px phone, 768px tablet, 1200px mid-screen, 1920px desktop, and 2560px wide-screen layout reviews, plus left/right expansion, long-content, sparse, mixed-size, and edit-mode checks.
+
+## [0.3.2] - 2026-10-14
+
+### Added
+
+- Added an always-available height toggle to work widgets. One card at a time is promoted into a three-row primary slot without changing the saved widget order, its lists or note editor use the added space, and compact screens keep a natural single-column flow.
+
+## [0.3.1] - 2026-10-13
+
+### Added
+
+- Added a distinct mobile login/account control in the compact header while keeping the full-screen lock action available from Settings.
+- Added static Open Graph and Twitter metadata for link previews.
+
+### Verified
+
+- Passed 32 test files / 99 tests, TypeScript checks, the production build, and 390px/1280px visual checks.
+
+## [0.3.0] - 2026-10-12
+
+### Added
+
+- Added optional browser-side AES-256-GCM end-to-end encryption for cloud sync, with a session-only passphrase and encrypted revision/conflict handling.
+- Added extension capture targets for sites, tasks, and notes, plus local window-session save, restore, and deletion.
+- Added a store-submission checklist, permission justifications, deterministic package validation, and SHA-256 package output.
+
+### Changed
+
+- Raised the compatible Desk API state envelope limit to 8 MB so encrypted payload overhead does not reduce usable desktop data.
+
+### Verified
+
+- Added encryption round-trip, wrong-password, extension-capture idempotency, and server-side encrypted-envelope validation tests.
+
 ## [0.2.14] - 2026-10-12
 
 ### Added

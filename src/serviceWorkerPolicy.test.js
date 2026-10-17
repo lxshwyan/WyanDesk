@@ -20,10 +20,21 @@ function createWorker(fetchImplementation, matchImplementation = vi.fn()) {
     addEventListener: (type, listener) => { listeners[type] = listener; },
   };
   vm.runInNewContext(source, { URL, Response, caches, fetch: fetchImplementation, self });
-  return { caches, listeners };
+  return { caches, listeners, self };
 }
 
 describe('service worker routing', () => {
+  it('waits for explicit approval before activating an update', () => {
+    const { listeners, self } = createWorker(vi.fn());
+    const waitUntil = vi.fn();
+    listeners.install({ waitUntil });
+    expect(waitUntil).toHaveBeenCalledOnce();
+    expect(self.skipWaiting).not.toHaveBeenCalled();
+
+    listeners.message({ data: { type: 'SKIP_WAITING' } });
+    expect(self.skipWaiting).toHaveBeenCalledOnce();
+  });
+
   it('leaves same-origin API requests to the network instead of the app-shell cache', () => {
     const { listeners } = createWorker(vi.fn());
     const respondWith = vi.fn();
@@ -43,7 +54,7 @@ describe('service worker routing', () => {
     listeners.fetch({ request, respondWith });
 
     await expect(respondWith.mock.calls[0][0]).resolves.toBe(shell);
-    expect(match).toHaveBeenNthCalledWith(1, request);
+    expect(match).toHaveBeenNthCalledWith(1, request, { ignoreVary: true });
     expect(match).toHaveBeenNthCalledWith(2, '/index.html');
   });
 
@@ -57,6 +68,20 @@ describe('service worker routing', () => {
     const response = await respondWith.mock.calls[0][0];
     expect(response.type).toBe('error');
     expect(match).toHaveBeenCalledTimes(1);
-    expect(match).toHaveBeenCalledWith(request);
+    expect(match).toHaveBeenCalledWith(request, { ignoreVary: true });
+  });
+
+  it('uses a matching precached hashed asset before trying the network', async () => {
+    const asset = new Response('export default true', { headers: { 'content-type': 'text/javascript' } });
+    const match = vi.fn(async () => asset);
+    const fetchImplementation = vi.fn();
+    const { listeners } = createWorker(fetchImplementation, match);
+    const respondWith = vi.fn();
+    const request = { method: 'GET', mode: 'cors', url: 'https://desk.test/assets/index-hash.js' };
+    listeners.fetch({ request, respondWith });
+
+    await expect(respondWith.mock.calls[0][0]).resolves.toBe(asset);
+    expect(match).toHaveBeenCalledWith(request, { ignoreVary: true });
+    expect(fetchImplementation).not.toHaveBeenCalled();
   });
 });

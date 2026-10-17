@@ -13,10 +13,15 @@
         <label><span>桌面</span><select id="workspace"></select></label>
         <label><span>分类</span><select id="category"></select></label>
       </section>
-      <button class="primary" id="savePage" type="button"><span>＋</span><span><strong>收藏当前网页</strong><small>仅读取当前打开的页面</small></span></button>
+      <section class="capture-box" aria-labelledby="capture-title">
+        <div class="section-heading"><span><strong id="capture-title">当前网页</strong><small>只读取标题和网址</small></span></div>
+        <div class="capture-kinds" role="group" aria-label="保存类型"><button class="active" data-capture-kind="link" type="button">网站</button><button data-capture-kind="task" type="button">任务</button><button data-capture-kind="note" type="button">便签</button></div>
+        <button class="primary" id="savePage" type="button"><span>＋</span><span><strong id="save-page-label">收藏当前网页</strong><small id="save-page-note">加入当前桌面分类</small></span></button>
+      </section>
       <div class="group-box">
-        <label><span>标签组名称</span><input id="groupTitle" maxlength="30" placeholder="例如：本周研究资料" /></label>
-        <button class="secondary" id="saveWindow" type="button"><span>▦</span><span><strong>保存当前窗口</strong><small>首次使用时申请读取标签页</small></span></button>
+        <label><span>会话名称</span><input id="groupTitle" maxlength="30" placeholder="例如：本周研究资料" /></label>
+        <button class="secondary" id="saveWindow" type="button"><span>▦</span><span><strong>暂存当前窗口</strong><small>保留顺序与固定状态，同时创建网站组合</small></span></button>
+        <div id="session-list" class="session-list"></div>
       </div>
       <section class="bookmark-box" aria-labelledby="bookmark-title">
         <div class="section-heading"><span><strong id="bookmark-title">浏览器书签迁移</strong><small>保留文件夹分类，不覆盖原内容</small></span><span class="permission-chip">按需授权</span></div>

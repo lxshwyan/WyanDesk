@@ -2,10 +2,13 @@
   "name": "微言桌面 WyanDesk",
   "short_name": "WyanDesk",
   "description": "你的网站、任务、便签和工作提醒。",
+  "lang": "zh-CN",
   "start_url": "/",
   "scope": "/",
   "id": "/",
   "display": "standalone",
+  "categories": ["productivity", "utilities"],
+  "prefer_related_applications": false,
   "background_color": "#e7eef8",
   "theme_color": "#e7eef8",
   "icons": [

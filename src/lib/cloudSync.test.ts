@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   clearSyncMetadata,
   deleteCloudState,
+  logoutCloudSession,
   readSyncMetadata,
   readSyncPausedUserId,
   submitCloudFeedback,
@@ -36,6 +37,20 @@ describe('cloud sync account controls', () => {
       credentials: 'include',
       body: JSON.stringify({ confirmation: 'DELETE_CLOUD_DATA' }),
     }));
+  });
+
+  it('logs out through the shared WyanHub session without deleting local data', async () => {
+    const request = vi.fn().mockResolvedValue(new Response('{"ok":true}', { status: 200, headers: { 'Content-Type': 'application/json' } }));
+    vi.stubGlobal('fetch', request);
+
+    await logoutCloudSession();
+
+    expect(request).toHaveBeenCalledWith('/api/auth/logout', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { Accept: 'application/json' },
+    });
+    expect(values.size).toBe(0);
   });
 
   it('submits only the written feedback and app version', async () => {

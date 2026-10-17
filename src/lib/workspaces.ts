@@ -1,4 +1,5 @@
 import type { DeskWorkspace } from '../types';
+import { DEFAULT_QUICK_ACTION_IDS } from './quickActions';
 import { createDefaultWorkspaceLayout } from './widgetLayout';
 
 export function cleanWorkspaceName(value: string): string {
@@ -12,6 +13,7 @@ export function createBlankWorkspace(id: string, name: string): DeskWorkspace {
     categories: ['常用'],
     shortcuts: [],
     shortcutGroups: [],
+    quickActionIds: [...DEFAULT_QUICK_ACTION_IDS],
     tasks: [],
     focusTaskId: '',
     note: '',
@@ -29,6 +31,7 @@ export function duplicateWorkspace(source: DeskWorkspace, id: string, name: stri
     categories: [...source.categories],
     shortcuts: source.shortcuts.map((shortcut) => ({ ...shortcut })),
     shortcutGroups: source.shortcutGroups.map((group) => ({ ...group, shortcutIds: [...group.shortcutIds] })),
+    quickActionIds: [...source.quickActionIds],
     tasks: source.tasks.map((task) => ({ ...task })),
     events: source.events.map((event) => ({ ...event })),
     recentShortcutIds: [...source.recentShortcutIds],

@@ -1,16 +1,22 @@
 const SUMMARY_KEY = 'wyandesk.extension.summary';
 const CAPTURE_KEY = 'wyandesk.extension.captures';
+const SESSION_KEY = 'wyandesk.extension.sessions';
 const extensionAPI = globalThis.chrome;
 
 const workspaceSelect = document.querySelector('#workspace');
 const categorySelect = document.querySelector('#category');
+const captureKindButtons = [...document.querySelectorAll('[data-capture-kind]')];
+const savePageLabel = document.querySelector('#save-page-label');
+const savePageNote = document.querySelector('#save-page-note');
 const groupTitleInput = document.querySelector('#groupTitle');
 const savePageButton = document.querySelector('#savePage');
 const saveWindowButton = document.querySelector('#saveWindow');
 const importBookmarksButton = document.querySelector('#importBookmarks');
 const exportBookmarksButton = document.querySelector('#exportBookmarks');
 const status = document.querySelector('#status');
+const sessionList = document.querySelector('#session-list');
 let summary = null;
+let captureKind = 'link';
 
 function setStatus(message, kind = '') {
   status.textContent = message;
@@ -64,6 +70,58 @@ async function appendCapture(kind, value) {
   };
   next[kind].push(value);
   await extensionAPI.storage.local.set({ [CAPTURE_KEY]: next });
+}
+
+async function readSessions() {
+  const result = await extensionAPI.storage.local.get(SESSION_KEY);
+  return Array.isArray(result[SESSION_KEY]) ? result[SESSION_KEY] : [];
+}
+
+async function writeSessions(items) {
+  await extensionAPI.storage.local.set({ [SESSION_KEY]: items.slice(0, 20) });
+}
+
+async function renderSessions() {
+  const sessions = await readSessions();
+  sessionList.innerHTML = sessions.length ? sessions.slice(0, 4).map((session) => `<div class="session-row"><span><strong>${escapeHTML(session.title)}</strong><small>${session.tabs.length} 个网页 · ${new Date(session.createdAt).toLocaleDateString('zh-CN')}</small></span><span><button type="button" data-restore-session="${session.id}">恢复</button><button type="button" data-delete-session="${session.id}" aria-label="删除会话">×</button></span></div>`).join('') : '<p class="session-empty">暂无已保存会话</p>';
+  sessionList.querySelectorAll('[data-restore-session]').forEach((button) => { button.addEventListener('click', () => restoreSession(button.dataset.restoreSession)); });
+  sessionList.querySelectorAll('[data-delete-session]').forEach((button) => { button.addEventListener('click', () => deleteSession(button.dataset.deleteSession)); });
+}
+
+function escapeHTML(value = '') {
+  return String(value).replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character]);
+}
+
+async function restoreSession(id) {
+  const granted = await extensionAPI.permissions.request({ permissions: ['tabs'] });
+  if (!granted) return setStatus('未获得标签页权限', 'error');
+  const session = (await readSessions()).find((item) => item.id === id);
+  if (!session?.tabs?.length) return setStatus('会话不存在', 'error');
+  try {
+    const created = await extensionAPI.windows.create({ url: session.tabs[0].url, focused: true });
+    const firstTab = created.tabs?.[0];
+    if (firstTab?.id && session.tabs[0].pinned) await extensionAPI.tabs.update(firstTab.id, { pinned: true });
+    for (const tab of session.tabs.slice(1)) {
+      await extensionAPI.tabs.create({ windowId: created.id, url: tab.url, active: false, pinned: Boolean(tab.pinned) });
+    }
+    setStatus(`已在新窗口恢复 ${session.tabs.length} 个网页。`, 'success');
+  } catch (error) {
+    setStatus(error instanceof Error ? error.message : '会话恢复失败', 'error');
+  }
+}
+
+async function deleteSession(id) {
+  await writeSessions((await readSessions()).filter((item) => item.id !== id));
+  await renderSessions();
+  setStatus('已删除本机会话。', 'success');
+}
+
+function selectCaptureKind(kind) {
+  captureKind = ['link', 'task', 'note'].includes(kind) ? kind : 'link';
+  captureKindButtons.forEach((button) => button.classList.toggle('active', button.dataset.captureKind === captureKind));
+  categorySelect.disabled = captureKind !== 'link';
+  savePageLabel.textContent = ({ link: '收藏当前网页', task: '保存为任务', note: '保存到便签' })[captureKind];
+  savePageNote.textContent = ({ link: '加入当前桌面分类', task: '添加网页标题和链接', note: '追加网页标题和链接' })[captureKind];
 }
 
 async function requestBookmarksPermission() {
@@ -159,12 +217,13 @@ async function saveCurrentPage() {
     if (!validPage(tab)) throw new Error('当前页面不能收藏');
     await appendCapture('items', {
       id: crypto.randomUUID(),
+      kind: captureKind,
       title: tab.title || new URL(tab.url).hostname,
       url: tab.url,
       workspaceId: workspaceSelect.value,
       category: categorySelect.value,
     });
-    setStatus('已收藏当前网页，微言桌面会自动整理。', 'success');
+    setStatus(({ link: '已收藏当前网页。', task: '已保存为当前桌面任务。', note: '已追加到当前桌面便签。' })[captureKind], 'success');
   } catch (error) {
     setStatus(error instanceof Error ? error.message : '收藏失败，请重试', 'error');
   } finally {
@@ -179,18 +238,22 @@ async function saveCurrentWindow() {
     if (!granted) throw new Error('未获得标签页权限');
     const tabs = (await extensionAPI.tabs.query({ currentWindow: true }))
       .filter(validPage)
-      .map((tab) => ({ title: tab.title || new URL(tab.url).hostname, url: tab.url }));
+      .map((tab) => ({ title: tab.title || new URL(tab.url).hostname, url: tab.url, pinned: Boolean(tab.pinned), active: Boolean(tab.active), index: tab.index }));
     if (!tabs.length) throw new Error('当前窗口没有可保存的网页');
     const now = new Date();
     const fallbackTitle = `标签组 ${now.getMonth() + 1}月${now.getDate()}日 ${now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false })}`;
+    const id = crypto.randomUUID();
+    const title = groupTitleInput.value.trim() || fallbackTitle;
     await appendCapture('groups', {
-      id: crypto.randomUUID(),
-      title: groupTitleInput.value.trim() || fallbackTitle,
+      id,
+      title,
       workspaceId: workspaceSelect.value,
       category: categorySelect.value,
       tabs,
     });
-    setStatus(`已保存 ${tabs.length} 个网页为网站组合。`, 'success');
+    await writeSessions([{ id, title, tabs, createdAt: new Date().toISOString() }, ...(await readSessions()).filter((item) => item.id !== id)]);
+    await renderSessions();
+    setStatus(`已暂存 ${tabs.length} 个网页，并创建网站组合。`, 'success');
   } catch (error) {
     setStatus(error instanceof Error ? error.message : '保存窗口失败，请重试', 'error');
   } finally {
@@ -199,12 +262,14 @@ async function saveCurrentWindow() {
 }
 
 workspaceSelect.addEventListener('change', renderCategories);
+captureKindButtons.forEach((button) => button.addEventListener('click', () => selectCaptureKind(button.dataset.captureKind)));
 savePageButton.addEventListener('click', saveCurrentPage);
 saveWindowButton.addEventListener('click', saveCurrentWindow);
 importBookmarksButton.addEventListener('click', importBrowserBookmarks);
 exportBookmarksButton.addEventListener('click', exportDesktopBookmarks);
 if (extensionAPI?.storage?.local) {
-  void loadSummary().catch(() => setStatus('请先打开一个微言桌面新标签页', 'error'));
+  void Promise.all([loadSummary(), renderSessions()]).catch(() => setStatus('请先打开一个微言桌面新标签页', 'error'));
+  selectCaptureKind('link');
 } else {
   summary = { version: 1, activeWorkspaceId: 'workspace-work', workspaces: [{ id: 'workspace-work', name: '工作', categories: ['常用', '办公'], shortcuts: [] }] };
   workspaceSelect.replaceChildren(...summary.workspaces.map((workspace) => new Option(workspace.name, workspace.id)));

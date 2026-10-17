@@ -1,11 +1,18 @@
-import { GripVertical } from 'lucide-react';
+import { GripVertical, Maximize2, Minimize2 } from 'lucide-react';
 import { useEffect, useRef, type MouseEvent as ReactMouseEvent, type PointerEvent, type ReactNode } from 'react';
 import type { DeskWidgetHeight, DeskWidgetId, DeskWidgetSize } from '../types';
+import { nextWidgetWidth } from '../lib/widgetLayout';
 
 const heightLabels: Record<DeskWidgetHeight, string> = {
   compact: '紧凑',
   standard: '标准',
   tall: '加高',
+};
+
+const widthLabels: Record<DeskWidgetSize['width'], string> = {
+  standard: '单列',
+  medium: '通栏',
+  wide: '通栏',
 };
 
 interface DragOrigin {
@@ -37,6 +44,13 @@ export function WidgetFrame({ id, label, size, editing, allowWide = true, draggi
   const activePointer = useRef<number | null>(null);
   const mouseCleanup = useRef<(() => void) | null>(null);
   const dragOrigin = useRef<DragOrigin | null>(null);
+  const lastNonTallHeight = useRef<DeskWidgetHeight>(size.height === 'tall' ? 'standard' : size.height);
+  const canQuickResize = id !== 'shortcuts';
+  const isTall = size.height === 'tall';
+
+  useEffect(() => {
+    if (!isTall) lastNonTallHeight.current = size.height;
+  }, [isTall, size.height]);
 
   useEffect(() => () => {
     mouseCleanup.current?.();
@@ -120,8 +134,28 @@ export function WidgetFrame({ id, label, size, editing, allowWide = true, draggi
     window.addEventListener('mouseup', finish, { once: true });
   }
 
+  function toggleTallHeight() {
+    onChange({ height: isTall ? lastNonTallHeight.current : 'tall' });
+  }
+
+  function cycleWidth() {
+    onChange({ width: nextWidgetWidth(size.width) });
+  }
+
   return (
-    <div ref={frameRef} className={`widget-frame${editing ? ' layout-editing' : ''}${dragging ? ' is-dragging' : ''}${dropTarget ? ' drag-target' : ''}`} data-widget={id} data-widget-width={size.width} data-widget-height={size.height}>
+    <div ref={frameRef} className={`widget-frame${canQuickResize && !editing ? ' has-height-toggle' : ''}${editing ? ' layout-editing' : ''}${dragging ? ' is-dragging' : ''}${dropTarget ? ' drag-target' : ''}`} data-widget={id} data-widget-width={size.width} data-widget-height={size.height}>
+      {canQuickResize && !editing && (
+        <button
+          className="widget-height-toggle"
+          type="button"
+          aria-label={isTall ? `${label}恢复原高度` : `${label}放大组件`}
+          aria-pressed={isTall}
+          title={isTall ? '恢复原高度' : '放大组件'}
+          onClick={toggleTallHeight}
+        >
+          {isTall ? <Minimize2 aria-hidden="true" /> : <Maximize2 aria-hidden="true" />}
+        </button>
+      )}
       {editing && (
         <div className="widget-layout-controls" role="group" aria-label={`${label}尺寸`}>
           <strong>{label}</strong>
@@ -131,7 +165,7 @@ export function WidgetFrame({ id, label, size, editing, allowWide = true, draggi
               <button key={height} className={size.height === height ? 'active' : ''} type="button" aria-pressed={size.height === height} onClick={() => onChange({ height })}>{heightLabels[height]}</button>
             ))}
           </span>
-          {allowWide && <button className={`widget-width-control${size.width === 'wide' ? ' active' : ''}`} type="button" aria-pressed={size.width === 'wide'} onClick={() => onChange({ width: size.width === 'wide' ? 'standard' : 'wide' })}>{size.width === 'wide' ? '收窄' : '加宽'}</button>}
+          {allowWide && <button className={`widget-width-control${size.width !== 'standard' ? ' active' : ''}`} type="button" aria-label={`${label}宽度，当前${widthLabels[size.width]}，点击切换`} onClick={cycleWidth}>{widthLabels[size.width]}</button>}
         </div>
       )}
       {children}

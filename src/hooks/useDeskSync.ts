@@ -3,6 +3,14 @@ import type { DeskState } from '../types';
 import { isExtensionRuntime } from '../lib/extensionBridge';
 import { migrateDeskState } from '../lib/storage';
 import {
+  decryptDeskState,
+  encryptDeskState,
+  isEncryptedDeskState,
+  readSessionPassphrase,
+  rememberSessionPassphrase,
+  validateSyncPassphrase,
+} from '../lib/cloudCrypto';
+import {
   backupSyncConflict,
   clearSyncMetadata,
   cloudLoginURL,
@@ -12,6 +20,7 @@ import {
   fetchCloudRevisions,
   fetchCloudState,
   fetchCloudUser,
+  logoutCloudSession,
   putCloudState,
   readSyncPausedUserId,
   readSyncMetadata,
@@ -25,14 +34,18 @@ import {
   type SyncMetadata,
 } from '../lib/cloudSync';
 
-export type DeskSyncStatus = 'local' | 'checking' | 'synced' | 'saving' | 'conflict' | 'error' | 'extension';
+export type DeskSyncStatus = 'local' | 'checking' | 'synced' | 'saving' | 'conflict' | 'locked' | 'error' | 'extension';
+
+class CloudEncryptionLockedError extends Error {}
 
 interface UseDeskSyncResult {
   status: DeskSyncStatus;
   user: CloudUser | null;
   error: string;
   conflict: CloudEnvelope | null;
+  encryptionEnabled: boolean;
   login: () => void;
+  logout: () => Promise<void>;
   syncNow: () => Promise<void>;
   keepLocal: () => Promise<void>;
   useCloud: () => void;
@@ -40,6 +53,9 @@ interface UseDeskSyncResult {
   restoreRevision: (version: number) => Promise<void>;
   deleteCloudData: () => Promise<void>;
   submitFeedback: (message: string, appVersion: string) => Promise<void>;
+  enableEncryption: (passphrase: string) => Promise<void>;
+  unlockEncryption: (passphrase: string) => Promise<void>;
+  disableEncryption: () => Promise<void>;
 }
 
 export function useDeskSync(state: DeskState, setState: Dispatch<SetStateAction<DeskState>>, isNewBrowser: boolean): UseDeskSyncResult {
@@ -47,11 +63,13 @@ export function useDeskSync(state: DeskState, setState: Dispatch<SetStateAction<
   const [user, setUser] = useState<CloudUser | null>(null);
   const [error, setError] = useState('');
   const [conflict, setConflict] = useState<CloudEnvelope | null>(null);
+  const [encryptionEnabled, setEncryptionEnabled] = useState(false);
   const stateRef = useRef(state);
   const userRef = useRef<CloudUser | null>(null);
   const metaRef = useRef<SyncMetadata | null>(readSyncMetadata());
   const pendingUploadRef = useRef<Promise<CloudEnvelope> | null>(null);
   const startedRef = useRef(false);
+  const encryptedRef = useRef(false);
 
   useEffect(() => {
     stateRef.current = state;
@@ -63,9 +81,35 @@ export function useDeskSync(state: DeskState, setState: Dispatch<SetStateAction<
     writeSyncMetadata(metadata);
   }, []);
 
+  const decodeCloudValue = useCallback(async (value: unknown, adoptFormat = true): Promise<DeskState> => {
+    if (!isEncryptedDeskState(value)) {
+      if (adoptFormat) {
+        encryptedRef.current = false;
+        setEncryptionEnabled(false);
+      }
+      return migrateDeskState(value);
+    }
+    if (adoptFormat) {
+      encryptedRef.current = true;
+      setEncryptionEnabled(true);
+    }
+    const passphrase = readSessionPassphrase();
+    if (!passphrase) throw new CloudEncryptionLockedError('请输入端到端同步密码');
+    return migrateDeskState(await decryptDeskState(value, passphrase));
+  }, []);
+
   const upload = useCallback(async (currentUser: CloudUser, nextState: DeskState, baseVersion: number) => {
     setStatus('saving');
-    const request = putCloudState(nextState, baseVersion);
+    let cloudState: unknown = nextState;
+    if (encryptedRef.current) {
+      const passphrase = readSessionPassphrase();
+      if (!passphrase) {
+        setStatus('locked');
+        throw new CloudEncryptionLockedError('请输入端到端同步密码');
+      }
+      cloudState = await encryptDeskState(nextState, passphrase);
+    }
+    const request = putCloudState(cloudState, baseVersion);
     pendingUploadRef.current = request;
     try {
       const saved = await request;
@@ -75,8 +119,14 @@ export function useDeskSync(state: DeskState, setState: Dispatch<SetStateAction<
       setStatus('synced');
     } catch (cause) {
       if (cause instanceof CloudConflictError) {
-        setConflict(cause.current);
-        setStatus('conflict');
+        try {
+          const current = cause.current.state ? await decodeCloudValue(cause.current.state) : null;
+          setConflict({ ...cause.current, state: current });
+          setStatus('conflict');
+        } catch (decodeError) {
+          setError(decodeError instanceof Error ? decodeError.message : '云端加密数据无法解锁');
+          setStatus('locked');
+        }
       } else {
         setError(cause instanceof Error ? cause.message : '云端同步失败');
         setStatus('error');
@@ -85,7 +135,7 @@ export function useDeskSync(state: DeskState, setState: Dispatch<SetStateAction<
     } finally {
       if (pendingUploadRef.current === request) pendingUploadRef.current = null;
     }
-  }, [remember]);
+  }, [decodeCloudValue, remember]);
 
   const reconcile = useCallback(async (currentUser: CloudUser) => {
     const localState = stateRef.current;
@@ -95,7 +145,7 @@ export function useDeskSync(state: DeskState, setState: Dispatch<SetStateAction<
       await upload(currentUser, localState, 0);
       return;
     }
-    const cloudState = migrateDeskState(remote.state);
+    const cloudState = await decodeCloudValue(remote.state);
     const cloudFingerprint = stateFingerprint(cloudState);
     const metadata = metaRef.current?.userId === currentUser.userId ? metaRef.current : null;
     if (cloudFingerprint === localFingerprint) {
@@ -114,9 +164,9 @@ export function useDeskSync(state: DeskState, setState: Dispatch<SetStateAction<
       await upload(currentUser, localState, remote.version);
       return;
     }
-    setConflict(remote);
+    setConflict({ ...remote, state: cloudState });
     setStatus('conflict');
-  }, [isNewBrowser, remember, setState, upload]);
+  }, [decodeCloudValue, isNewBrowser, remember, setState, upload]);
 
   const syncNow = useCallback(async (resumePaused = true) => {
     if (isExtensionRuntime()) {
@@ -143,7 +193,7 @@ export function useDeskSync(state: DeskState, setState: Dispatch<SetStateAction<
       await reconcile(currentUser);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : '暂时无法连接同步服务');
-      setStatus('error');
+      setStatus(cause instanceof CloudEncryptionLockedError || (cause instanceof Error && cause.message.includes('同步密码')) ? 'locked' : 'error');
     }
   }, [reconcile]);
 
@@ -191,12 +241,12 @@ export function useDeskSync(state: DeskState, setState: Dispatch<SetStateAction<
     if (!currentUser) throw new Error('请先登录同步');
     const [revision, current] = await Promise.all([fetchCloudRevision(version), fetchCloudState()]);
     if (!revision.state) throw new Error('历史版本内容为空');
-    const next = migrateDeskState(revision.state);
+    const next = await decodeCloudValue(revision.state, false);
     backupSyncConflict(stateRef.current, 'local');
     await upload(currentUser, next, current.version);
     setState(next);
     stateRef.current = next;
-  }, [setState, upload]);
+  }, [decodeCloudValue, setState, upload]);
 
   const deleteCloudData = useCallback(async () => {
     const currentUser = userRef.current;
@@ -208,6 +258,9 @@ export function useDeskSync(state: DeskState, setState: Dispatch<SetStateAction<
       await deleteCloudState();
       metaRef.current = null;
       clearSyncMetadata();
+      rememberSessionPassphrase('');
+      encryptedRef.current = false;
+      setEncryptionEnabled(false);
       writeSyncPausedUserId(currentUser.userId);
       setConflict(null);
       setStatus('local');
@@ -223,6 +276,60 @@ export function useDeskSync(state: DeskState, setState: Dispatch<SetStateAction<
     await submitCloudFeedback(message, appVersion);
   }, []);
 
+  const enableEncryption = useCallback(async (rawPassphrase: string) => {
+    const currentUser = userRef.current;
+    if (!currentUser) throw new Error('请先登录同步');
+    const passphrase = validateSyncPassphrase(rawPassphrase);
+    rememberSessionPassphrase(passphrase);
+    const previous = encryptedRef.current;
+    encryptedRef.current = true;
+    setEncryptionEnabled(true);
+    try {
+      const remote = await fetchCloudState();
+      await upload(currentUser, stateRef.current, remote.version);
+    } catch (cause) {
+      if (!previous) {
+        encryptedRef.current = false;
+        setEncryptionEnabled(false);
+        rememberSessionPassphrase('');
+      }
+      throw cause;
+    }
+  }, [upload]);
+
+  const unlockEncryption = useCallback(async (rawPassphrase: string) => {
+    const currentUser = userRef.current;
+    if (!currentUser) throw new Error('请先登录同步');
+    const passphrase = validateSyncPassphrase(rawPassphrase);
+    rememberSessionPassphrase(passphrase);
+    setError('');
+    try {
+      await reconcile(currentUser);
+    } catch (cause) {
+      rememberSessionPassphrase('');
+      setError(cause instanceof Error ? cause.message : '同步密码错误');
+      setStatus('locked');
+      throw cause;
+    }
+  }, [reconcile]);
+
+  const disableEncryption = useCallback(async () => {
+    const currentUser = userRef.current;
+    if (!currentUser) throw new Error('请先登录同步');
+    const remote = await fetchCloudState();
+    const previous = encryptedRef.current;
+    encryptedRef.current = false;
+    setEncryptionEnabled(false);
+    try {
+      await upload(currentUser, stateRef.current, remote.version);
+      rememberSessionPassphrase('');
+    } catch (cause) {
+      encryptedRef.current = previous;
+      setEncryptionEnabled(previous);
+      throw cause;
+    }
+  }, [upload]);
+
   const login = useCallback(() => {
     if (isExtensionRuntime()) {
       window.open('https://desk.wyanhub.com/', '_blank', 'noopener,noreferrer');
@@ -231,5 +338,18 @@ export function useDeskSync(state: DeskState, setState: Dispatch<SetStateAction<
     window.location.assign(cloudLoginURL());
   }, []);
 
-  return { status, user, error, conflict, login, syncNow, keepLocal, useCloud, listRevisions, restoreRevision, deleteCloudData, submitFeedback };
+  const logout = useCallback(async () => {
+    if (!userRef.current) return;
+    setError('');
+    try {
+      await logoutCloudSession();
+      rememberSessionPassphrase('');
+      window.location.assign('/');
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : '退出失败，请稍后重试');
+      throw cause;
+    }
+  }, []);
+
+  return { status, user, error, conflict, encryptionEnabled, login, logout, syncNow, keepLocal, useCloud, listRevisions, restoreRevision, deleteCloudData, submitFeedback, enableEncryption, unlockEncryption, disableEncryption };
 }

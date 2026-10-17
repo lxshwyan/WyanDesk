@@ -1,12 +1,13 @@
 import type { DeskWorkspace, Shortcut, ShortcutGroup } from '../types';
 import { normalizeURL } from './storage';
 import { createDefaultWorkspaceLayout } from './widgetLayout';
+import { normalizeQuickActionIds } from './quickActions';
 
 interface WorkspaceTemplate {
   product: 'WyanDeskTemplate';
   version: 1;
   exportedAt: string;
-  workspace: Pick<DeskWorkspace, 'name' | 'categories' | 'shortcuts' | 'shortcutGroups'>;
+  workspace: Pick<DeskWorkspace, 'name' | 'categories' | 'shortcuts' | 'shortcutGroups' | 'quickActionIds'>;
 }
 
 export function serializeWorkspaceTemplate(workspace: DeskWorkspace, exportedAt = new Date()): string {
@@ -19,6 +20,7 @@ export function serializeWorkspaceTemplate(workspace: DeskWorkspace, exportedAt 
       categories: workspace.categories,
       shortcuts: workspace.shortcuts,
       shortcutGroups: workspace.shortcutGroups,
+      quickActionIds: workspace.quickActionIds,
     },
   };
   return JSON.stringify(value, null, 2);
@@ -60,6 +62,7 @@ export function parseWorkspaceTemplate(value: string, id: string): DeskWorkspace
     categories: categories.length ? [...new Set(categories)] : ['常用'],
     shortcuts,
     shortcutGroups,
+    quickActionIds: normalizeQuickActionIds(source.quickActionIds),
     tasks: [],
     focusTaskId: '',
     note: '',

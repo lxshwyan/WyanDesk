@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { createDefaultState } from '../data/defaults';
+import { createBalancedState } from '../data/defaults';
 import { applyExtensionCaptures, type ExtensionCaptureQueue } from './extensionBridge';
 
 describe('applyExtensionCaptures', () => {
   it('adds a captured page to the requested desktop and category', () => {
-    const state = createDefaultState();
+    const state = createBalancedState();
     const queue: ExtensionCaptureQueue = {
       version: 1,
       items: [{ id: 'one', title: '示例', url: 'https://example.com/path#section', workspaceId: 'workspace-study', category: '资料' }],
@@ -19,7 +19,7 @@ describe('applyExtensionCaptures', () => {
   });
 
   it('creates an idempotent window group and reuses existing URLs', () => {
-    const state = createDefaultState();
+    const state = createBalancedState();
     const queue: ExtensionCaptureQueue = {
       version: 1,
       items: [],
@@ -45,7 +45,7 @@ describe('applyExtensionCaptures', () => {
   });
 
   it('imports a native bookmark batch, preserves folders, and skips duplicate URLs', () => {
-    const state = createDefaultState();
+    const state = createBalancedState();
     const queue: ExtensionCaptureQueue = {
       version: 1,
       items: [],
@@ -66,5 +66,26 @@ describe('applyExtensionCaptures', () => {
     expect(first.state.workspaces[0].categories).toContain('设计收藏夹');
     expect(first.state.workspaces[0].shortcuts.find((shortcut) => shortcut.url === 'https://example.com/design')?.category).toBe('设计收藏夹');
     expect(second.addedSites).toBe(0);
+  });
+
+  it('captures the current page as an idempotent task or note', () => {
+    const state = createBalancedState();
+    const queue: ExtensionCaptureQueue = {
+      version: 1,
+      items: [
+        { id: 'task-one', kind: 'task', title: '跟进项目', url: 'https://example.com/task', workspaceId: 'workspace-work', category: '常用' },
+        { id: 'note-one', kind: 'note', title: '参考资料', url: 'https://example.com/note', workspaceId: 'workspace-work', category: '常用' },
+      ],
+      groups: [],
+      bookmarks: [],
+    };
+    const first = applyExtensionCaptures(state, queue);
+    const second = applyExtensionCaptures(first.state, queue);
+    expect(first.addedTasks).toBe(1);
+    expect(first.addedNotes).toBe(1);
+    expect(first.state.workspaces[0].tasks[0].text).toContain('https://example.com/task');
+    expect(first.state.workspaces[0].note).toContain('https://example.com/note');
+    expect(second.addedTasks).toBe(0);
+    expect(second.addedNotes).toBe(0);
   });
 });

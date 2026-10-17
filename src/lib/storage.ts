@@ -5,6 +5,9 @@ import { normalizeFocusMinutes } from './focusTimer';
 import { normalizeTimeEvents } from './timeEvents';
 import { normalizeWorkspaceLayout } from './widgetLayout';
 import { normalizeWorldClockZones } from './worldClock';
+import { clearLocalClipboardItems } from './localClipboard';
+import { clearWeatherWidgetState } from './weather';
+import { normalizeQuickActionIds } from './quickActions';
 
 const STORAGE_KEY = 'wyandesk.state.v1';
 const RECOVERY_KEY = 'wyandesk.state.recovery.v1';
@@ -106,6 +109,7 @@ function migrateWorkspace(saved: SavedWorkspace, defaults: DeskWorkspace, id: st
     categories: migrateCategories(saved, shortcuts),
     shortcuts,
     shortcutGroups: migrateShortcutGroups(saved, shortcuts),
+    quickActionIds: normalizeQuickActionIds(saved.quickActionIds),
     tasks,
     focusTaskId,
     note: typeof saved.note === 'string' ? saved.note : defaults.note,
@@ -177,6 +181,7 @@ export function migrateDeskState(value: unknown): DeskState {
       lockMessage: typeof (preferences as Partial<DeskState['preferences']>).lockMessage === 'string'
         ? (preferences as Partial<DeskState['preferences']>).lockMessage!.slice(0, 48)
         : '',
+      mobileLayoutPriority: (preferences as Partial<DeskState['preferences']>).mobileLayoutPriority === 'sites' ? 'sites' : 'tasks',
       onboardingCompleted: legacy ? true : Boolean((preferences as Partial<DeskState['preferences']>).onboardingCompleted),
       productDiscoveryDismissed: legacy ? true : Boolean((preferences as Partial<DeskState['preferences']>).productDiscoveryDismissed),
     },
@@ -219,6 +224,8 @@ export function writeDeskState(state: DeskState): void {
 
 export function clearDeskState(): void {
   window.localStorage.removeItem(STORAGE_KEY);
+  clearLocalClipboardItems();
+  clearWeatherWidgetState();
 }
 
 export function serializeDeskBackup(state: DeskState, exportedAt = new Date()): string {

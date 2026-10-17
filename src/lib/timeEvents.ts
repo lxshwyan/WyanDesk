@@ -84,6 +84,25 @@ export function describeTimeEvent(event: DeskTimeEvent, now = new Date()): TimeE
   return { eyebrow: '已过', value: `${Math.abs(difference)} 天`, caption, tone: 'past' };
 }
 
+export function countdownDayDifference(event: DeskTimeEvent, now = new Date()): number | null {
+  if (event.type !== 'countdown') return null;
+  const source = parseDateKey(event.date);
+  if (!source) return null;
+  const today = localToday(now);
+  const target = event.repeatYearly ? annualTarget(source, today) : source;
+  return dayNumber(target) - dayNumber(today);
+}
+
+export function countdownEventsForDisplay(events: DeskTimeEvent[], now = new Date()): DeskTimeEvent[] {
+  return [...events].filter((event) => event.type === 'countdown').sort((left, right) => {
+    const leftDays = countdownDayDifference(left, now) ?? Number.MAX_SAFE_INTEGER;
+    const rightDays = countdownDayDifference(right, now) ?? Number.MAX_SAFE_INTEGER;
+    const leftScore = leftDays >= 0 ? leftDays : 100_000 + Math.abs(leftDays);
+    const rightScore = rightDays >= 0 ? rightDays : 100_000 + Math.abs(rightDays);
+    return leftScore - rightScore || left.title.localeCompare(right.title, 'zh-CN');
+  });
+}
+
 export function normalizeTimeEvents(value: unknown): DeskTimeEvent[] {
   if (!Array.isArray(value)) return [];
   const seenIds = new Set<string>();
