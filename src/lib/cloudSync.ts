@@ -1,8 +1,11 @@
 import type { DeskState } from '../types';
+import { isExtensionRuntime } from './extensionBridge';
+import { clearExtensionCredential, extensionAuthorizationHeader, logoutExtension } from './extensionAuth';
 
 const SYNC_META_KEY = 'wyandesk.sync.meta.v1';
 const CONFLICT_BACKUP_KEY = 'wyandesk.sync.conflict.backup.v1';
 const SYNC_PAUSED_KEY = 'wyandesk.sync.paused.v1';
+const EXTENSION_CLOUD_ORIGIN = 'https://desk.wyanhub.com';
 
 export interface CloudUser {
   workspaceId: string;
@@ -40,10 +43,26 @@ function isJSON(response: Response): boolean {
   return response.headers.get('content-type')?.includes('application/json') ?? false;
 }
 
+export async function cloudFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  const extension = isExtensionRuntime();
+  const authorization = extension ? await extensionAuthorizationHeader() : {};
+  const extensionHeaders = new Headers(init.headers);
+  for (const [name, value] of Object.entries(authorization)) extensionHeaders.set(name, value);
+  const response = await fetch(extension ? `${EXTENSION_CLOUD_ORIGIN}${path}` : path, {
+    ...init,
+    credentials: extension ? 'omit' : (init.credentials ?? 'include'),
+    headers: extension ? extensionHeaders : init.headers,
+  });
+  if (extension && (response.status === 401 || response.status === 403 || (response.status >= 300 && response.status < 400))) {
+    await clearExtensionCredential();
+  }
+  return response;
+}
+
 export async function fetchCloudUser(): Promise<CloudUser | null> {
   let response: Response;
   try {
-    response = await fetch('/api/desk/me', { credentials: 'include', redirect: 'manual', headers: { Accept: 'application/json' } });
+    response = await cloudFetch('/api/desk/me', { redirect: 'manual', headers: { Accept: 'application/json' } });
   } catch {
     return null;
   }
@@ -53,24 +72,26 @@ export async function fetchCloudUser(): Promise<CloudUser | null> {
 }
 
 export async function logoutCloudSession(): Promise<void> {
-  const response = await fetch('/api/auth/logout', {
+  if (isExtensionRuntime()) {
+    await logoutExtension();
+    return;
+  }
+  const response = await cloudFetch('/api/auth/logout', {
     method: 'POST',
-    credentials: 'include',
     headers: { Accept: 'application/json' },
   });
   if (!response.ok || !isJSON(response)) throw new Error('退出失败，请稍后重试');
 }
 
 export async function fetchCloudState(): Promise<CloudEnvelope> {
-  const response = await fetch('/api/desk/state', { credentials: 'include', headers: { Accept: 'application/json' } });
+  const response = await cloudFetch('/api/desk/state', { headers: { Accept: 'application/json' } });
   if (!response.ok || !isJSON(response)) throw new Error('暂时无法读取云端数据');
   return response.json() as Promise<CloudEnvelope>;
 }
 
 export async function putCloudState(state: unknown, baseVersion: number): Promise<CloudEnvelope> {
-  const response = await fetch('/api/desk/state', {
+  const response = await cloudFetch('/api/desk/state', {
     method: 'PUT',
-    credentials: 'include',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify({ baseVersion, state }),
   });
@@ -83,9 +104,8 @@ export async function putCloudState(state: unknown, baseVersion: number): Promis
 }
 
 export async function deleteCloudState(): Promise<void> {
-  const response = await fetch('/api/desk/state', {
+  const response = await cloudFetch('/api/desk/state', {
     method: 'DELETE',
-    credentials: 'include',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify({ confirmation: 'DELETE_CLOUD_DATA' }),
   });
@@ -94,16 +114,23 @@ export async function deleteCloudState(): Promise<void> {
 
 export async function submitCloudFeedback(message: string, appVersion: string): Promise<void> {
   const body = JSON.stringify({ applicationId: 'desk', category: 'bug', message, appVersion });
-  let response = await fetch('/api/feedback', {
+  if (isExtensionRuntime()) {
+    const response = await cloudFetch('/api/desk/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ message, appVersion }),
+    });
+    if (!response.ok || !isJSON(response)) throw new Error('反馈提交失败，请稍后重试');
+    return;
+  }
+  let response = await cloudFetch('/api/feedback', {
     method: 'POST',
-    credentials: 'include',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-WyanHub-User': '1' },
     body,
   });
   if (response.status === 404) {
-    response = await fetch('/api/desk/feedback', {
+    response = await cloudFetch('/api/desk/feedback', {
       method: 'POST',
-      credentials: 'include',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify({ message, appVersion }),
     });
@@ -112,14 +139,14 @@ export async function submitCloudFeedback(message: string, appVersion: string): 
 }
 
 export async function fetchCloudRevisions(): Promise<CloudRevision[]> {
-  const response = await fetch('/api/desk/revisions', { credentials: 'include', headers: { Accept: 'application/json' } });
+  const response = await cloudFetch('/api/desk/revisions', { headers: { Accept: 'application/json' } });
   if (!response.ok || !isJSON(response)) throw new Error('暂时无法读取历史版本');
   const value = await response.json() as { items?: CloudRevision[] };
   return Array.isArray(value.items) ? value.items : [];
 }
 
 export async function fetchCloudRevision(version: number): Promise<CloudEnvelope> {
-  const response = await fetch(`/api/desk/revisions/${version}`, { credentials: 'include', headers: { Accept: 'application/json' } });
+  const response = await cloudFetch(`/api/desk/revisions/${version}`, { headers: { Accept: 'application/json' } });
   if (!response.ok || !isJSON(response)) throw new Error('历史版本不存在');
   return response.json() as Promise<CloudEnvelope>;
 }

@@ -1,8 +1,65 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createBalancedState } from '../data/defaults';
-import { applyExtensionCaptures, type ExtensionCaptureQueue } from './extensionBridge';
+import { acknowledgeExtensionCaptures, applyExtensionCaptures, deskHomeURL, type ExtensionCaptureQueue } from './extensionBridge';
+
+afterEach(() => vi.unstubAllGlobals());
+
+describe('deskHomeURL', () => {
+  it('acknowledges capture IDs without resending private desktop content', async () => {
+    const sendMessage = vi.fn().mockResolvedValue({ ok: true });
+    vi.stubGlobal('location', { protocol: 'chrome-extension:' });
+    vi.stubGlobal('chrome', { storage: { local: {} }, runtime: { sendMessage } });
+    await acknowledgeExtensionCaptures({ version: 1, items: [{ id: 'one' } as never], groups: [], bookmarks: [] });
+    expect(sendMessage).toHaveBeenCalledWith({ type: 'capture.ack', ids: { items: ['one'], groups: [], bookmarks: [] } });
+  });
+  it('keeps the brand link inside the packaged extension app', () => {
+    vi.stubGlobal('location', { protocol: 'chrome-extension:' });
+    vi.stubGlobal('chrome', { storage: { local: {} } });
+    expect(deskHomeURL()).toBe('./index.html');
+  });
+
+  it('uses the website root outside the extension', () => {
+    vi.stubGlobal('location', { protocol: 'https:' });
+    expect(deskHomeURL()).toBe('/');
+  });
+});
 
 describe('applyExtensionCaptures', () => {
+  it('adds read-later excerpts once, without duplicating sites or losing the source', () => {
+    const state = createBalancedState();
+    const queue: ExtensionCaptureQueue = { version: 1, groups: [], bookmarks: [], items: [
+      { id: 'reading', kind: 'reading', title: '论文', url: 'https://example.com/paper', excerpt: '一段重要摘录', workspaceId: state.activeWorkspaceId, category: '资料' },
+      { id: 'bad', kind: 'reading', title: 'bad', url: 'javascript:alert(1)', workspaceId: state.activeWorkspaceId, category: '资料' },
+    ] };
+    const first = applyExtensionCaptures(state, queue);
+    expect(first.addedReadings).toBe(1);
+    expect(first.addedSites).toBe(0);
+    expect(first.state.inbox[0]).toMatchObject({ content: '论文', url: 'https://example.com/paper', excerpt: '一段重要摘录' });
+    expect(applyExtensionCaptures(first.state, queue).addedReadings).toBe(0);
+    first.state.inbox[0] = { ...first.state.inbox[0], readAt: new Date().toISOString(), note: '原备注' };
+    const readded = applyExtensionCaptures(first.state, { ...queue, items: [{ ...queue.items[0], id: 'reading-again' }] });
+    expect(readded.state.inbox).toHaveLength(1);
+    expect(readded.state.inbox[0].readAt).toBeUndefined();
+    expect(readded.state.inbox[0].note).toBe('原备注');
+  });
+  it('preserves distinct hash-router pages when importing bookmarks', () => {
+    const result = applyExtensionCaptures(createBalancedState(), { version: 1, groups: [], items: [], bookmarks: [{ id: 'routes', workspaceId: 'workspace-work', entries: [
+      { title: '项目', url: 'https://example.com/#/projects', category: '资料' },
+      { title: '任务', url: 'https://example.com/#/tasks', category: '资料' },
+    ] }] });
+    expect(result.addedSites).toBe(2);
+    expect(result.state.workspaces[0].shortcuts.at(-1)?.url).toBe('https://example.com/#/tasks');
+  });
+  it('deduplicates large imports across batches without dropping source categories', () => {
+    const state = createBalancedState();
+    const entries = Array.from({ length: 5000 }, (_, index) => ({ title: `资料 ${index}`, url: `https://example.com/item/${index}`, category: '研究资料' }));
+    const result = applyExtensionCaptures(state, { version: 1, items: [], groups: [], bookmarks: [
+      { id: 'large', workspaceId: 'workspace-work', entries },
+      { id: 'duplicate', workspaceId: 'workspace-work', entries: [entries[0]] },
+    ] });
+    expect(result.addedSites).toBe(5000);
+    expect(result.state.workspaces[0].shortcuts.at(-1)?.category).toBe('研究资料');
+  });
   it('adds a captured page to the requested desktop and category', () => {
     const state = createBalancedState();
     const queue: ExtensionCaptureQueue = {
@@ -42,6 +99,41 @@ describe('applyExtensionCaptures', () => {
     expect(second.addedSites).toBe(0);
     expect(second.addedGroups).toBe(0);
     expect(second.state.workspaces[0].shortcutGroups.find((group) => group.id === 'extension-group-window-one')?.shortcutIds).toHaveLength(2);
+  });
+
+  it('merges the current window into a selected group and keeps URLs unique', () => {
+    const state = createBalancedState();
+    const work = state.workspaces[0];
+    const firstShortcut = work.shortcuts[0];
+    const secondShortcut = work.shortcuts[1];
+    work.shortcutGroups = [{ id: 'daily-work', title: '日常工作', shortcutIds: [firstShortcut.id] }];
+    const queue: ExtensionCaptureQueue = {
+      version: 1,
+      items: [],
+      groups: [{
+        id: 'capture-one',
+        title: '日常工作',
+        targetGroupId: 'daily-work',
+        workspaceId: work.id,
+        category: '常用',
+        tabs: [
+          { title: secondShortcut.title, url: secondShortcut.url },
+          { title: '新资料', url: 'https://example.com/research#today' },
+          { title: '新资料重复页', url: 'https://example.com/research#later' },
+        ],
+      }],
+      bookmarks: [],
+    };
+
+    const first = applyExtensionCaptures(state, queue);
+    const second = applyExtensionCaptures(first.state, queue);
+    const group = first.state.workspaces[0].shortcutGroups.find((item) => item.id === 'daily-work');
+    expect(first.addedSites).toBe(1);
+    expect(first.addedGroups).toBe(0);
+    expect(first.updatedGroups).toBe(1);
+    expect(group?.shortcutIds).toHaveLength(3);
+    expect(second.addedSites).toBe(0);
+    expect(second.updatedGroups).toBe(0);
   });
 
   it('imports a native bookmark batch, preserves folders, and skips duplicate URLs', () => {

@@ -14,6 +14,10 @@ export function categoryExists(categories: string[], name: string, except = ''):
   return categories.some((category) => categoryKey(category) === key && categoryKey(category) !== exceptKey);
 }
 
+export function shortcutsForCategory(shortcuts: Shortcut[], category: string): Shortcut[] {
+  return shortcuts.filter((shortcut) => shortcut.category === category);
+}
+
 export function moveCategory(categories: string[], name: string, direction: -1 | 1): string[] {
   const currentIndex = categories.indexOf(name);
   const targetIndex = currentIndex + direction;

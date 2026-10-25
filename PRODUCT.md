@@ -59,3 +59,11 @@ The product name is “微言桌面 WyanDesk.” User-facing language is concise
 ## Accessibility & Inclusion
 
 The desktop and assistant must remain keyboard operable, responsive on narrow mobile viewports, compatible with reduced motion, and clear without relying on color alone. Loading, cancellation, empty, refusal, and error states require readable text and programmatic status semantics.
+
+
+## Local candidate: relaxation entry and private slow messages (2026-10-24)
+
+An explicit header “小游戏” button opens a native popover with a locally chosen random short activity, six direct links, the full Toolbox /relax directory, friend slow interaction and realtime peer play. Outside click/Esc dismiss it and return focus; the mobile popover has 12px side margins. Signed-in users have a separate durable slow-interaction bell; it does not replace the local inbox, alter desktop widgets, or read notes/tasks. Existing web and extension authentication is reused. The panel shows friend requests, private invitations, actual current turns and other content updates. Reads are versioned, account changes/lock clear stale interface content, and a normal link opens the allowed Toolbox destination. Visible polling is bounded; no closed-page/system/email push is promised. Shared room content lives in Desk API and is not part of desktop end-to-end encrypted sync. This is an ordinary extension of the current visual world, released with Desk0.6.1/API0.4.0 on 2026-10-25; installed-extension authentication remains a separate unverified device boundary.
+
+
+小游戏快捷入口沿用桌面工具栏的轻量按钮与原生非模态弹层，按随机短局、常用玩法、好友慢互动、实时五子棋和完整目录组织。弹层不透明，桌面自然紧凑宽度与手机边距独立处理；Esc返回触发按钮，外部点击收起。只有用户点击后打开公开入口，不读取桌面内容、不改变通知权限或云同步边界。

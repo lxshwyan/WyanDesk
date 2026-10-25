@@ -3,6 +3,7 @@ import { flushSync } from 'react-dom';
 import packageInfo from '../package.json';
 import {
   AppWindow,
+  CircleAlert,
   BellRing,
   BookMarked,
   CalendarClock,
@@ -41,6 +42,7 @@ import {
   MessageSquareText,
   Palette,
   Pencil,
+  Play,
   Plus,
   RotateCcw,
   RefreshCw,
@@ -60,9 +62,12 @@ import {
   Wrench,
   X,
 } from 'lucide-react';
-import { CommandPalette, type CommandShortcut, type DeskCommand } from './components/CommandPalette';
+import { CommandPalette, type CommandResource, type CommandShortcut, type DeskCommand } from './components/CommandPalette';
+import { ContinueWorkCard } from './components/ContinueWorkCard';
 import { AssistantPanel } from './components/AssistantPanel';
+import { SlowMessages } from './components/SlowMessages';
 import { CategoryManager } from './components/CategoryManager';
+import { CategoryContextMenu } from './components/CategoryContextMenu';
 import { CalculatorCard } from './components/CalculatorCard';
 import { ClipboardCard } from './components/ClipboardCard';
 import { CloudHistoryModal } from './components/CloudHistoryModal';
@@ -91,6 +96,7 @@ import { LockActivityModal } from './components/LockActivityModal';
 import { LockPinModal, type LockPinMode } from './components/LockPinModal';
 import { ManagedLayer } from './components/ManagedLayer';
 import { MonthCalendarCard } from './components/MonthCalendarCard';
+import { BrowserExtensionInstallCard } from './components/BrowserExtensionInstallCard';
 import { PwaInstallCard } from './components/PwaInstallCard';
 import { PwaUpdateNotice } from './components/PwaUpdateNotice';
 import { TrustCenterModal, type TrustPanel } from './components/TrustCenterModal';
@@ -103,18 +109,23 @@ import { WorldClockCard } from './components/WorldClockCard';
 import { WorldClockSettingsModal } from './components/WorldClockSettingsModal';
 import { createBalancedState, createDefaultState, defaultShortcuts } from './data/defaults';
 import { mergeBrowserBookmarks, parseBrowserBookmarks } from './lib/bookmarks';
-import { categoryDeleteTarget, categoryExists, cleanCategoryName, deleteCategory, moveCategory, renameCategory } from './lib/categories';
+import { categoryDeleteTarget, categoryExists, cleanCategoryName, deleteCategory, moveCategory, renameCategory, shortcutsForCategory } from './lib/categories';
 import { MAX_VISIBLE_SHORTCUT_CATEGORIES, visibleShortcutCategoryCount } from './lib/categoryNavigation';
 import { parseQuickCommand, quickCommandURL } from './lib/commandShortcuts';
+import { deskSearchItems } from './lib/deskSearch';
+import { readingURL, organizeReadingItem } from './lib/readingList';
+import { activateBrowserTab, readOpenBrowserTabs } from './lib/browserWorkspace';
+import { openExternalURL, openExternalURLs, type BatchOpenResult } from './lib/externalWindows';
 import { MINUTE_MS, startAlignedClock } from './lib/alignedClock';
 import { getNextReminder, minutesFromTime, reminderIsDue } from './lib/reminders';
 import { playReminderChime, shouldShowInPageReminder, type ReminderAlertData } from './lib/reminderAlert';
 import { directURLFromInput, moveShortcutInCategory, moveShortcutToCategory, shortcutURLExists } from './lib/shortcuts';
+import { toggleShortcutGroupMembership } from './lib/shortcutGroups';
 import { parseICS, serializeWorkspaceICS } from './lib/ics';
 import { clearDeskState, normalizeURL, parseDeskBackup, readDeskStateWithStatus, readRecoverySnapshot, serializeDeskBackup, writeDeskState } from './lib/storage';
 import { trackUsageConversion } from './lib/usageAnalytics';
 import { nextRecurringDate, prioritizeTasks } from './lib/tasks';
-import { applyExtensionCaptures, isExtensionRuntime, publishExtensionSummary, subscribeExtensionCaptures } from './lib/extensionBridge';
+import { acknowledgeExtensionCaptures, applyExtensionCaptures, deskHomeURL, isExtensionRuntime, publishExtensionSummary, subscribeExtensionCaptures, type ExtensionCaptureQueue } from './lib/extensionBridge';
 import { cleanWorkspaceName, createBlankWorkspace, duplicateWorkspace, moveWorkspace } from './lib/workspaces';
 import { parseWorkspaceTemplate, serializeWorkspaceTemplate } from './lib/workspaceTemplate';
 import { useDeskSync } from './hooks/useDeskSync';
@@ -187,9 +198,8 @@ const pinnableQuickActionIds = new Set([
   'add-shortcut',
 ]);
 
-function openExternal(url: string): void {
-  const target = window.open(url, '_blank', 'noopener,noreferrer');
-  if (target) target.opener = null;
+function openExternal(url: string): boolean {
+  return openExternalURL(url);
 }
 
 function localDateKey(value: Date): string {
@@ -201,7 +211,7 @@ function localDateKey(value: Date): string {
 
 function popoverMenuItems(popover: HTMLElement | null): HTMLElement[] {
   if (!popover) return [];
-  return [...popover.querySelectorAll<HTMLElement>('[role="menuitem"], [role="menuitemradio"]')]
+  return [...popover.querySelectorAll<HTMLElement>('[role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"]')]
     .filter((item) => !item.hasAttribute('disabled') && item.getAttribute('aria-disabled') !== 'true');
 }
 
@@ -237,6 +247,7 @@ function useMediaQuery(query: string): boolean {
 function App() {
   const [initialRead] = useState(() => readDeskStateWithStatus());
   const [state, setState] = useState<DeskState>(initialRead.state);
+  const captureReceiptsRef = useRef(new WeakMap<DeskState, ExtensionCaptureQueue>());
   const isMobileViewport = useMediaQuery('(max-width: 620px)');
   const [now, setNow] = useState(() => new Date());
   const [activeCategory, setActiveCategory] = useState('常用');
@@ -253,6 +264,7 @@ function App() {
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [shortcutGroupsMenuOpen, setShortcutGroupsMenuOpen] = useState(false);
   const [shortcutManageMenuOpen, setShortcutManageMenuOpen] = useState(false);
   const [workspaceManagerOpen, setWorkspaceManagerOpen] = useState(false);
   const [shortcutModalOpen, setShortcutModalOpen] = useState(false);
@@ -260,6 +272,7 @@ function App() {
   const [shortcutGroupManagerOpen, setShortcutGroupManagerOpen] = useState(false);
   const [quickActionsManagerOpen, setQuickActionsManagerOpen] = useState(false);
   const [shortcutContextMenu, setShortcutContextMenu] = useState<{ shortcutId: string; x: number; y: number } | null>(null);
+  const [categoryContextMenu, setCategoryContextMenu] = useState<{ category: string; x: number; y: number } | null>(null);
   const [shortcutsExpanded, setShortcutsExpanded] = useState(false);
   const [editingShortcutId, setEditingShortcutId] = useState('');
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
@@ -267,9 +280,12 @@ function App() {
   const [timeEventModalOpen, setTimeEventModalOpen] = useState(false);
   const [editingTimeEventId, setEditingTimeEventId] = useState('');
   const [commandOpen, setCommandOpen] = useState(false);
+  const [commandInitialQuery, setCommandInitialQuery] = useState('');
+  const [noteSearchPending, setNoteSearchPending] = useState(false);
   const [keyboardHelpOpen, setKeyboardHelpOpen] = useState(false);
   const [inboxOpen, setInboxOpen] = useState(false);
   const [inboxInitialKind, setInboxInitialKind] = useState<DeskInboxItem['kind']>('note');
+  const [inboxInitialItemId, setInboxInitialItemId] = useState('');
   const [onboardingOpen, setOnboardingOpen] = useState(() => initialRead.isNew && !initialRead.state.preferences.onboardingCompleted);
   const [cloudHistoryOpen, setCloudHistoryOpen] = useState(false);
   const [syncConflictOpen, setSyncConflictOpen] = useState(false);
@@ -308,10 +324,13 @@ function App() {
   const appSwitcherPopoverRef = useRef<HTMLDivElement>(null);
   const accountTriggerRef = useRef<HTMLButtonElement>(null);
   const accountPopoverRef = useRef<HTMLDivElement>(null);
+  const shortcutGroupsTriggerRef = useRef<HTMLButtonElement>(null);
+  const shortcutGroupsPopoverRef = useRef<HTMLDivElement>(null);
   const shortcutManageTriggerRef = useRef<HTMLButtonElement>(null);
   const categoryNavigationRef = useRef<HTMLDivElement>(null);
   const categoryMeasureRef = useRef<HTMLDivElement>(null);
   const categoryMoreMeasureRef = useRef<HTMLSpanElement>(null);
+  const categoryOpenAllRef = useRef<HTMLButtonElement>(null);
   const shortcutManagePopoverRef = useRef<HTMLDivElement>(null);
   const settingsScrollRef = useRef<HTMLDivElement>(null);
   const unlockButtonRef = useRef<HTMLButtonElement>(null);
@@ -330,7 +349,9 @@ function App() {
   const activeLockSessionRef = useRef<{ id: string; startedAt: string } | null>(null);
   const deskSync = useDeskSync(state, setState, initialRead.isNew);
   const pwa = usePwa();
+  const extensionRuntime = isExtensionRuntime();
   const closeShortcutContextMenu = useCallback(() => setShortcutContextMenu(null), []);
+  const closeCategoryContextMenu = useCallback(() => setCategoryContextMenu(null), []);
 
   useEffect(() => {
     settingsScrollRef.current?.scrollTo({ top: 0 });
@@ -396,6 +417,7 @@ function App() {
     setShortcutManagerOpen(false);
     setShortcutGroupManagerOpen(false);
     setShortcutContextMenu(null);
+    setCategoryContextMenu(null);
     setCategoryModalOpen(false);
     setEventModalOpen(false);
     setTimeEventModalOpen(false);
@@ -489,8 +511,9 @@ function App() {
     setSettingsOpen(true);
   }
 
-  function openInbox(kind: DeskInboxItem['kind'] = 'note') {
+  function openInbox(kind: DeskInboxItem['kind'] = 'note', itemId = '') {
     setInboxInitialKind(kind);
+    setInboxInitialItemId(itemId);
     setInboxOpen(true);
   }
 
@@ -626,6 +649,11 @@ function App() {
     setSaveStatus('saving');
     try {
       writeDeskState(state);
+      const receipt = captureReceiptsRef.current.get(state);
+      if (receipt) {
+        captureReceiptsRef.current.delete(state);
+        void acknowledgeExtensionCaptures(receipt).catch(() => undefined);
+      }
       setSaveStatus('saved');
     } catch {
       setSaveStatus('error');
@@ -651,23 +679,41 @@ function App() {
   }, [deskSync.status, deskSync.user]);
 
   useEffect(() => {
-    if (!isExtensionRuntime()) return;
+    if (!extensionRuntime) return;
     void publishExtensionSummary(state).catch(() => undefined);
-  }, [state]);
+  }, [extensionRuntime, state]);
 
-  useEffect(() => subscribeExtensionCaptures((queue) => {
+  useEffect(() => {
+    // Do not apply captures to a stale local snapshot that initial cloud reconciliation may replace.
+    if (['checking', 'conflict', 'locked'].includes(deskSync.status)) return;
+    return subscribeExtensionCaptures((queue) => {
     setState((current) => {
-      const result = applyExtensionCaptures(current, queue);
-      if (result.addedSites || result.addedGroups || result.addedTasks || result.addedNotes) {
+      const known = new Set(current.workspaces.map((workspace) => workspace.id));
+      const applicable: ExtensionCaptureQueue = { version: 1,
+        items: queue.items.filter((item) => known.has(item.workspaceId)),
+        groups: queue.groups.filter((item) => known.has(item.workspaceId)),
+        bookmarks: queue.bookmarks.filter((item) => known.has(item.workspaceId)),
+      };
+      if (!applicable.items.length && !applicable.groups.length && !applicable.bookmarks.length) return current;
+      const result = applyExtensionCaptures(current, applicable);
+      captureReceiptsRef.current.set(result.state, applicable);
+      if (result.addedSites || result.addedGroups || result.updatedGroups || result.addedTasks || result.addedNotes || result.addedReadings) {
         trackUsageConversion('capture_saved');
-        const message = result.addedGroups
-          ? `已收藏 ${result.addedSites} 个网页并创建 ${result.addedGroups} 个组合`
-          : [result.addedSites ? `${result.addedSites} 个网站` : '', result.addedTasks ? `${result.addedTasks} 个任务` : '', result.addedNotes ? `${result.addedNotes} 条便签` : ''].filter(Boolean).join('、') + '已从浏览器保存';
+        const saved = [
+          result.addedSites ? `${result.addedSites} 个网站` : '',
+          result.addedGroups ? `${result.addedGroups} 个新组合` : '',
+          result.updatedGroups ? `${result.updatedGroups} 个已有组合` : '',
+          result.addedTasks ? `${result.addedTasks} 个任务` : '',
+          result.addedNotes ? `${result.addedNotes} 条便签` : '',
+          result.addedReadings ? `${result.addedReadings} 条阅读资料` : '',
+        ].filter(Boolean).join('、');
+        const message = `已从浏览器保存：${saved}`;
         window.setTimeout(() => notify(message), 0);
       }
       return result.state;
     });
-  }), [notify]);
+    });
+  }, [notify, deskSync.status]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -697,7 +743,7 @@ function App() {
   }, [isLocked, lockPinEnabled, unlockDesktop]);
 
   useEffect(() => {
-    if (!workspaceMenuOpen && !switcherOpen && !accountMenuOpen && !shortcutManageMenuOpen) return undefined;
+    if (!workspaceMenuOpen && !switcherOpen && !accountMenuOpen && !shortcutGroupsMenuOpen && !shortcutManageMenuOpen) return undefined;
 
     const closeOutside = (event: Event) => {
       const target = event.target;
@@ -705,6 +751,7 @@ function App() {
       if (workspaceMenuOpen && !workspaceTriggerRef.current?.parentElement?.contains(target)) setWorkspaceMenuOpen(false);
       if (switcherOpen && !appSwitcherTriggerRef.current?.parentElement?.contains(target)) setSwitcherOpen(false);
       if (accountMenuOpen && !accountTriggerRef.current?.parentElement?.contains(target)) setAccountMenuOpen(false);
+      if (shortcutGroupsMenuOpen && !shortcutGroupsTriggerRef.current?.parentElement?.contains(target)) setShortcutGroupsMenuOpen(false);
       if (shortcutManageMenuOpen && !shortcutManageTriggerRef.current?.parentElement?.contains(target)) setShortcutManageMenuOpen(false);
     };
     const closeWithEscape = (event: KeyboardEvent) => {
@@ -719,6 +766,9 @@ function App() {
       } else if (accountMenuOpen) {
         setAccountMenuOpen(false);
         accountTriggerRef.current?.focus({ preventScroll: true });
+      } else if (shortcutGroupsMenuOpen) {
+        setShortcutGroupsMenuOpen(false);
+        shortcutGroupsTriggerRef.current?.focus({ preventScroll: true });
       } else if (shortcutManageMenuOpen) {
         setShortcutManageMenuOpen(false);
         shortcutManageTriggerRef.current?.focus({ preventScroll: true });
@@ -733,7 +783,7 @@ function App() {
       document.removeEventListener('focusin', closeOutside);
       document.removeEventListener('keydown', closeWithEscape);
     };
-  }, [accountMenuOpen, shortcutManageMenuOpen, switcherOpen, workspaceMenuOpen]);
+  }, [accountMenuOpen, shortcutGroupsMenuOpen, shortcutManageMenuOpen, switcherOpen, workspaceMenuOpen]);
 
   useEffect(() => {
     if (!isLocked) return;
@@ -855,6 +905,34 @@ function App() {
     workspaceName: item.name,
   }))), [state.workspaces]);
 
+  useEffect(() => {
+    if (!noteSearchPending || commandOpen) return;
+    const frame = window.requestAnimationFrame(() => {
+      const editor = document.querySelector<HTMLTextAreaElement>('textarea[aria-label="工作便签"]');
+      editor?.scrollIntoView({ block: 'center' });
+      editor?.focus();
+      setNoteSearchPending(false);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [noteSearchPending, commandOpen, workspace.id]);
+
+  const commandResources: CommandResource[] = deskSearchItems(state).map((item) => ({
+    ...item,
+    id: `${item.workspaceId || 'inbox'}-${item.id}`,
+    kind: item.kind === 'task' ? '任务' : item.kind === 'note' ? '便签' : '收集',
+    icon: item.kind === 'task' ? <ListTodo /> : item.kind === 'note' ? <StickyNote /> : <BookMarked />,
+    run: () => {
+      if (item.kind === 'inbox') { openInbox('link', item.id); return; }
+      if (item.workspaceId) switchWorkspace(item.workspaceId);
+      if (item.kind === 'task') setTaskDetailId(item.id);
+      else { updatePreferences({ showNotes: true }); setNoteSearchPending(true); }
+    },
+  }));
+
+  async function loadSearchTabs(): Promise<CommandResource[]> {
+    return (await readOpenBrowserTabs()).map((tab) => ({ id: String(tab.id), label: tab.title, description: tab.url, keywords: tab.url, kind: '切换标签', icon: <AppWindow />, run: () => activateBrowserTab(tab) }));
+  }
+
   const categories = workspace.categories;
   const primaryCategories = categories.slice(0, visibleCategoryCount);
   const overflowCategories = categories.slice(visibleCategoryCount);
@@ -863,6 +941,7 @@ function App() {
     counts[shortcut.category] = (counts[shortcut.category] || 0) + 1;
     return counts;
   }, {}), [workspace.shortcuts]);
+  const activeCategoryShortcuts = useMemo(() => shortcutsForCategory(workspace.shortcuts, activeCategory), [activeCategory, workspace.shortcuts]);
 
   useEffect(() => {
     if (!categories.includes(activeCategory) && categories.length) setActiveCategory(categories[0]);
@@ -872,7 +951,8 @@ function App() {
     const navigation = categoryNavigationRef.current;
     const measureRow = categoryMeasureRef.current;
     const moreControl = categoryMoreMeasureRef.current;
-    if (!navigation || !measureRow || !moreControl) return;
+    const openAllControl = categoryOpenAllRef.current;
+    if (!navigation || !measureRow || !moreControl || !openAllControl) return;
 
     const recalculate = () => {
       const measuredCategories = Array.from(measureRow.children)
@@ -882,10 +962,11 @@ function App() {
       const navigationStyles = window.getComputedStyle(navigation);
       const categoryGap = Number.parseFloat(categoryStyles.columnGap || categoryStyles.gap) || 0;
       const overflowGap = Number.parseFloat(navigationStyles.columnGap || navigationStyles.gap) || 0;
+      const actionWidth = openAllControl.getBoundingClientRect().width + overflowGap;
       const nextCount = visibleShortcutCategoryCount({
         categoryWidths: measuredCategories,
         totalCategoryCount: categories.length,
-        availableWidth: navigation.clientWidth,
+        availableWidth: Math.max(0, navigation.clientWidth - actionWidth),
         moreWidth: moreControl.getBoundingClientRect().width,
         categoryGap,
         overflowGap,
@@ -901,15 +982,15 @@ function App() {
       resizeObserver?.disconnect();
       window.removeEventListener('resize', recalculate);
     };
-  }, [activeCategory, categories, query]);
+  }, [activeCategory, activeCategoryShortcuts.length, categories, query]);
 
   const visibleShortcuts = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase('zh-CN');
+    if (!normalized) return activeCategoryShortcuts;
     return workspace.shortcuts.filter((item) => {
-      if (!normalized) return item.category === activeCategory;
       return [item.title, item.description, item.url, item.category].join(' ').toLocaleLowerCase('zh-CN').includes(normalized);
     });
-  }, [activeCategory, query, workspace.shortcuts]);
+  }, [activeCategoryShortcuts, query, workspace.shortcuts]);
   const shortcutDisplayLimit = shortcutItemLimit(workspace.layout.widgets.shortcuts.height, state.preferences.compactShortcuts, isMobileViewport);
   const displayedShortcuts = shortcutsExpanded ? visibleShortcuts : visibleShortcuts.slice(0, shortcutDisplayLimit);
   const shortcutContextTarget = shortcutContextMenu ? workspace.shortcuts.find((item) => item.id === shortcutContextMenu.shortcutId) : undefined;
@@ -1060,6 +1141,7 @@ function App() {
     if (kind === 'link') {
       try {
         url = normalizeURL(content);
+        if (!readingURL(url)) throw new Error('无效或含凭证的网址');
       } catch {
         notify('请输入有效的网址');
         return false;
@@ -1085,33 +1167,16 @@ function App() {
   function organizeInboxItem(item: DeskInboxItem, workspaceId: string, category: string) {
     const target = state.workspaces.find((candidate) => candidate.id === workspaceId);
     if (!target) return;
-    if (item.kind === 'link' && item.url && shortcutURLExists(target.shortcuts, item.url)) {
-      setState((current) => ({ ...current, inbox: current.inbox.filter((candidate) => candidate.id !== item.id) }));
-      notify('该网址已经在目标桌面中');
-      return;
-    }
+    if (item.kind === 'link' && !readingURL(item.url)) { notify('来源网址无效，内容仍保留在收集箱中'); return; }
     setState((current) => ({
       ...current,
       inbox: current.inbox.filter((candidate) => candidate.id !== item.id),
       workspaces: current.workspaces.map((candidate) => {
         if (candidate.id !== workspaceId) return candidate;
-        if (item.kind === 'task') {
-          return { ...candidate, tasks: [{ id: uid('task'), text: item.content, done: false, createdAt: new Date().toISOString() }, ...candidate.tasks] };
-        }
-        if (item.kind === 'note') {
-          return { ...candidate, note: [candidate.note.trim(), item.content].filter(Boolean).join('\n') };
-        }
-        if (!item.url) return candidate;
-        const title = new URL(item.url).hostname.replace(/^www\./, '').slice(0, 50);
-        const shortcut: Shortcut = { id: uid('shortcut'), title, url: item.url, category, icon: title.slice(0, 2), accent: '#3478f6', description: '来自收集箱' };
-        return {
-          ...candidate,
-          categories: candidate.categories.includes(category) ? candidate.categories : [...candidate.categories, category],
-          shortcuts: [...candidate.shortcuts, shortcut],
-        };
+        return organizeReadingItem(candidate, item, category, uid(item.kind));
       }),
     }));
-    notify(item.kind === 'link' ? `已整理到“${target.name}”网站` : item.kind === 'task' ? `已整理到“${target.name}”任务` : `已整理到“${target.name}”便签`);
+    notify(item.kind === 'link' ? `已移入“${target.name}”网站${item.excerpt || item.note ? '，摘录与备注已保留到便签' : ''}` : item.kind === 'task' ? `已整理到“${target.name}”任务` : `已整理到“${target.name}”便签`);
   }
 
   function recordShortcut(shortcut: Shortcut) {
@@ -1253,26 +1318,47 @@ function App() {
     updateWorkspace((current) => ({ ...current, focusTaskId: current.focusTaskId === id ? '' : id }));
   }
 
-  function openShortcutGroup(group: ShortcutGroup) {
-    const shortcuts = group.shortcutIds
-      .map((id) => workspace.shortcuts.find((shortcut) => shortcut.id === id))
-      .filter((shortcut): shortcut is Shortcut => Boolean(shortcut));
+  function openShortcutCollection(title: string, kind: '分类' | '组合', shortcuts: Shortcut[]): BatchOpenResult | null {
     if (!shortcuts.length) {
-      notify('这个组合里暂时没有可打开的网站');
-      return;
+      notify(`这个${kind}里暂时没有可打开的网站`);
+      return null;
     }
+    if (shortcuts.length > 12 && !window.confirm(`“${title}”${kind}有 ${shortcuts.length} 个网站，确认全部打开？`)) return null;
+    const urls: string[] = [];
     for (const shortcut of shortcuts) {
       try {
-        openExternal(normalizeURL(shortcut.url));
+        urls.push(normalizeURL(shortcut.url));
       } catch {
         // Skip invalid legacy URLs without interrupting the remaining group.
       }
     }
-    updateWorkspace((current) => ({
-      ...current,
-      recentShortcutIds: [...shortcuts.map((shortcut) => shortcut.id), ...current.recentShortcutIds.filter((id) => !shortcuts.some((shortcut) => shortcut.id === id))].slice(0, 6),
-    }));
-    notify(`正在打开“${group.title}”`);
+    if (!urls.length) {
+      notify(`这个${kind}里没有有效的网址`);
+      return null;
+    }
+
+    const result = openExternalURLs(urls);
+    if (result.opened > 0) {
+      updateWorkspace((current) => ({
+        ...current,
+        recentShortcutIds: [...shortcuts.map((shortcut) => shortcut.id), ...current.recentShortcutIds.filter((id) => !shortcuts.some((shortcut) => shortcut.id === id))].slice(0, 6),
+      }));
+    }
+    if (result.blocked === 0) notify(`已打开“${title}”${kind}的 ${result.opened} 个网站，标签页可能在当前窗口后台`);
+    else if (result.opened === 0) notify(`浏览器拦截了全部 ${result.blocked} 个网站，请允许本站弹出窗口后重试`);
+    else notify(`已打开 ${result.opened} 个，另 ${result.blocked} 个被浏览器拦截，请允许本站弹出窗口后重试`);
+    return result;
+  }
+
+  function openShortcutGroup(group: ShortcutGroup): BatchOpenResult | null {
+    const shortcuts = group.shortcutIds
+      .map((id) => workspace.shortcuts.find((shortcut) => shortcut.id === id))
+      .filter((shortcut): shortcut is Shortcut => Boolean(shortcut));
+    return openShortcutCollection(group.title, '组合', shortcuts);
+  }
+
+  function openShortcutCategory(category: string): BatchOpenResult | null {
+    return openShortcutCollection(category, '分类', shortcutsForCategory(workspace.shortcuts, category));
   }
 
   function saveShortcutGroup(draft: { id: string; title: string; shortcutIds: string[] }): boolean {
@@ -1310,6 +1396,15 @@ function App() {
       quickActionIds: current.quickActionIds.filter((id) => id !== `open-group-${group.id}`),
     }));
     notify('网站组合已删除');
+  }
+
+  function toggleShortcutInGroup(shortcut: Shortcut, group: ShortcutGroup) {
+    const included = !group.shortcutIds.includes(shortcut.id);
+    updateWorkspace((current) => {
+      const result = toggleShortcutGroupMembership(current.shortcutGroups, group.id, shortcut.id);
+      return result ? { ...current, shortcutGroups: result.groups } : current;
+    });
+    notify(included ? `已加入“${group.title}”` : `已从“${group.title}”移出`);
   }
 
   function removeShortcut(id: string) {
@@ -1670,8 +1765,10 @@ function App() {
     setShortcutModalOpen(false);
     setShortcutManagerOpen(false);
     setShortcutGroupManagerOpen(false);
+    setShortcutGroupsMenuOpen(false);
     setShortcutManageMenuOpen(false);
     setShortcutContextMenu(null);
+    setCategoryContextMenu(null);
     setCategoryModalOpen(false);
     setEventModalOpen(false);
     setLayoutEditing(false);
@@ -2000,6 +2097,7 @@ function App() {
     { id: 'new-event', label: '新日程', description: '添加日期和时间', keywords: '日程 日历 安排 calendar', icon: <CalendarPlus />, run: openEventModal },
     { id: 'new-time-event', label: '时间事件', description: '累计日或目标倒计时', keywords: '纪念日 倒计时 累计 天数 countdown anniversary', icon: <CalendarClock />, run: () => openTimeEventModal() },
     { id: 'open-inbox', label: '打开收集箱', description: `${state.inbox.length} 条待整理内容`, keywords: '收集箱 临时 记录 inbox capture', icon: <Inbox />, run: () => openInbox() },
+    { id: 'read-later', label: '稍后阅读', description: `${state.inbox.filter((item) => item.kind === 'link' && !item.readAt).length} 条未读资料`, keywords: '阅读 摘录 收藏 资料 read later', icon: <BookMarked />, run: () => openInbox('link') },
     { id: 'start-focus', label: '开始专注', description: `${focusDuration} 分钟专注计时`, keywords: '专注 番茄钟 计时 timer', icon: <TimerReset />, run: startFocus },
     { id: 'shortcut-groups', label: '管理网站组合', description: '创建或编辑一组常用网站', keywords: '组合 分组 标签页 工作组 group tabs', icon: <FolderOpen />, run: () => setShortcutGroupManagerOpen(true) },
     { id: 'wyan-tools', label: '微言工具', description: '图片、PDF、表格与文本工具', keywords: '工具箱 图片 pdf 表格', icon: <Wrench />, run: () => openShortcutById('wyan-tools', 'https://tools.wyanhub.com/tools') },
@@ -2011,6 +2109,7 @@ function App() {
     { id: 'manage-workspaces', label: '管理桌面', description: '新建、复制或切换桌面', keywords: '桌面 工作 学习 生活 workspace', icon: <Layers3 />, run: () => setWorkspaceManagerOpen(true) },
     { id: 'edit-layout', label: '调整卡片布局', description: `调整“${workspace.name}”的卡片尺寸`, keywords: '布局 卡片 宽度 高度 放大 缩小 layout resize', icon: <AppWindow />, run: enterLayoutEditing },
     { id: 'import-bookmarks', label: '导入浏览器书签', description: '从 Chrome、Edge 或 Firefox 迁移网站', keywords: '书签 收藏 导入 bookmark chrome edge firefox', icon: <BookMarked />, run: () => openSettings('data') },
+    ...(!extensionRuntime ? [{ id: 'install-browser-extension', label: '安装浏览器扩展', description: '下载测试版 ZIP 并查看 Chrome / Edge 安装步骤', keywords: '安装 扩展 插件 zip chrome edge extension', icon: <Download />, run: () => openSettings('data') }] : []),
     { id: 'open-settings', label: '桌面设置', description: '背景、组件与提醒', keywords: '设置 背景 组件 setting', icon: <Settings />, run: () => openSettings() },
     { id: 'keyboard-help', label: '键盘快捷操作', description: '查看搜索与命令快捷键', keywords: '快捷键 键盘 shortcut help', icon: <Keyboard />, run: () => setKeyboardHelpOpen(true) },
     ...(pwa.installMode === 'prompt' ? [{ id: 'install-app', label: '安装到桌面', description: '作为独立应用打开微言桌面', keywords: '安装 桌面 应用 pwa install', icon: <Download />, run: installDeskApp }] : []),
@@ -2267,7 +2366,7 @@ function App() {
       <div className={`desktop-content${isLocked ? ' is-locked' : ''}${layoutEditing ? ' layout-mode-active' : ''}`}>
 
       <header className="desk-header">
-        <a className="brand" href="/" aria-label="微言桌面首页">
+        <a className="brand" href={deskHomeURL()} aria-label="微言桌面首页">
           <span className="brand-mark">W</span>
           <span className="brand-copy"><strong>微言桌面</strong><small>个人效率桌面</small></span>
         </a>
@@ -2363,6 +2462,7 @@ function App() {
             <Sparkles aria-hidden="true" /><span>助手</span>
           </button>
           {state.inbox.length > 0 && <button className="icon-button inbox-trigger" type="button" onClick={() => openInbox()} aria-label={`收集箱，${state.inbox.length} 条待整理`} title="收集箱"><Inbox aria-hidden="true" /><span>{Math.min(state.inbox.length, 99)}</span></button>}
+          <SlowMessages userKey={isLocked ? null : deskSync.user?.userId ?? null} />
           <button className={`text-button layout-header-button${layoutEditing ? ' active' : ''}`} type="button" onClick={() => layoutEditing ? setLayoutEditing(false) : enterLayoutEditing()} aria-label={layoutEditing ? '完成桌面布局调整' : '调整桌面布局和组件顺序'} aria-pressed={layoutEditing} title={layoutEditing ? '完成布局调整' : '调整桌面布局和组件顺序'}><AppWindow aria-hidden="true" /><span>{layoutEditing ? '完成布局' : '调整布局'}</span></button>
           <div className="account-menu-wrap">
             <button
@@ -2388,7 +2488,7 @@ function App() {
               aria-controls="accountMenu"
             >
               {deskSync.user ? <Cloud aria-hidden="true" /> : <LockKeyhole aria-hidden="true" />}
-              <span>{deskSync.user ? deskSync.user.userName : '本地'}</span>
+              <span>{deskSync.user ? deskSync.user.userName : deskSync.status === 'checking' ? '正在连接' : '本地'}</span>
               <ChevronDown aria-hidden="true" />
             </button>
             {accountMenuOpen && (
@@ -2437,7 +2537,7 @@ function App() {
             <Search aria-hidden="true" />
             <input ref={searchInputRef} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索网站或输入关键词" aria-label="搜索网站或网页" />
             {query && <button type="button" onClick={() => setQuery('')} aria-label="清空搜索"><X /></button>}
-            <button className="command-trigger" type="button" onClick={() => setCommandOpen(true)} aria-label="打开命令中心"><Command /><span>⌘ K</span></button>
+            <button className="command-trigger" type="button" onClick={() => { setCommandInitialQuery(query); setCommandOpen(true); }} aria-label="搜索全部桌面内容"><Command /><span>全部内容</span></button>
             {showRecentSearchSuggestions && (
               <section className="search-recent-suggestions" aria-label="最近使用的网站">
                 <div className="search-recent-label"><History aria-hidden="true" /><span>最近打开</span></div>
@@ -2473,6 +2573,8 @@ function App() {
           </section>
 
           <div className="desk-primary">
+          {extensionRuntime && <ContinueWorkCard workspaceName={workspace.name} />}
+          {state.inbox.some((item) => item.kind === 'link' && !item.readAt) && <section className="reading-strip glass-panel" aria-label="稍后阅读"><BookMarked aria-hidden="true" /><strong>稍后阅读</strong><span>{state.inbox.filter((item) => item.kind === 'link' && !item.readAt).length} 条未读</span><button className="quiet-button" type="button" onClick={() => openInbox('link')}>继续阅读<ChevronRight aria-hidden="true" /></button></section>}
           {state.preferences.showTimeEvents && state.timeEvents.length > 0 && (
             <TimeEventsStrip events={state.timeEvents} now={now} onAdd={() => openTimeEventModal()} onEdit={openTimeEventModal} />
           )}
@@ -2484,16 +2586,81 @@ function App() {
                 <span>{query ? `${visibleShortcuts.length} 个匹配` : `${visibleShortcuts.length} 个网站`}</span>
               </div>
               <div className="heading-actions">
+                <div className="shortcut-groups-wrap">
+                  <button
+                    ref={shortcutGroupsTriggerRef}
+                    className={`quiet-button shortcut-groups-trigger${shortcutGroupsMenuOpen ? ' active' : ''}`}
+                    type="button"
+                    onClick={() => {
+                      setShortcutManageMenuOpen(false);
+                      setShortcutGroupsMenuOpen((value) => !value);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+                      event.preventDefault();
+                      const focusLast = event.key === 'ArrowUp';
+                      setShortcutManageMenuOpen(false);
+                      setShortcutGroupsMenuOpen(true);
+                      window.requestAnimationFrame(() => {
+                        const items = popoverMenuItems(shortcutGroupsPopoverRef.current);
+                        items[focusLast ? items.length - 1 : 0]?.focus();
+                      });
+                    }}
+                    aria-label={`选择网站组合，共 ${workspace.shortcutGroups.length} 个`}
+                    aria-expanded={shortcutGroupsMenuOpen}
+                    aria-haspopup="menu"
+                    aria-controls="shortcutGroupsMenu"
+                  >
+                    <FolderOpen aria-hidden="true" />网站组合{workspace.shortcutGroups.length > 0 && <span>{workspace.shortcutGroups.length}</span>}
+                  </button>
+                  {shortcutGroupsMenuOpen && (
+                    <div ref={shortcutGroupsPopoverRef} id="shortcutGroupsMenu" className="shortcut-groups-menu" role="menu" aria-label="选择要打开的网站组合" onKeyDown={(event) => handlePopoverNavigation(event, shortcutGroupsPopoverRef.current)}>
+                      <div className="shortcut-groups-menu-heading"><strong>选择组合</strong><small>{workspace.shortcutGroups.length} 个组合</small></div>
+                      {workspace.shortcutGroups.length > 0 ? (
+                        <div className="shortcut-groups-list">
+                          {workspace.shortcutGroups.map((group) => {
+                            const count = group.shortcutIds.filter((id) => workspace.shortcuts.some((shortcut) => shortcut.id === id)).length;
+                            return (
+                              <button
+                                className="shortcut-group-launch"
+                                key={group.id}
+                                type="button"
+                                role="menuitem"
+                                disabled={!count}
+                                onClick={() => {
+                                  if (openShortcutGroup(group)) setShortcutGroupsMenuOpen(false);
+                                }}
+                              >
+                                <FolderOpen aria-hidden="true" />
+                                <span className="shortcut-group-launch-copy"><strong>{group.title}</strong><small>{count ? `${count} 个网站` : '需要先选择网站'}</small></span>
+                                <span className="shortcut-group-launch-action"><Play aria-hidden="true" />打开全部</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="shortcut-groups-empty"><strong>还没有网站组合</strong><small>新建后可一次打开一组网站</small></div>
+                      )}
+                      <button className="shortcut-groups-manage" type="button" role="menuitem" onClick={() => { setShortcutGroupsMenuOpen(false); setShortcutGroupManagerOpen(true); }}>
+                        <Settings aria-hidden="true" /><span><strong>{workspace.shortcutGroups.length ? '管理网站组合' : '新建网站组合'}</strong><small>添加、编辑或删除组合</small></span>
+                      </button>
+                    </div>
+                  )}
+                </div>
                 <div className="shortcut-manage-wrap">
                   <button
                     ref={shortcutManageTriggerRef}
                     className={`quiet-button shortcut-manage-trigger${shortcutManageMenuOpen ? ' active' : ''}`}
                     type="button"
-                    onClick={() => setShortcutManageMenuOpen((value) => !value)}
+                    onClick={() => {
+                      setShortcutGroupsMenuOpen(false);
+                      setShortcutManageMenuOpen((value) => !value);
+                    }}
                     onKeyDown={(event) => {
                       if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
                       event.preventDefault();
                       const focusLast = event.key === 'ArrowUp';
+                      setShortcutGroupsMenuOpen(false);
                       setShortcutManageMenuOpen(true);
                       window.requestAnimationFrame(() => {
                         const items = popoverMenuItems(shortcutManagePopoverRef.current);
@@ -2510,7 +2677,6 @@ function App() {
                     <div ref={shortcutManagePopoverRef} id="shortcutManageMenu" className="shortcut-manage-menu" role="menu" aria-label="管理快捷网站" onKeyDown={(event) => handlePopoverNavigation(event, shortcutManagePopoverRef.current)}>
                       <button type="button" role="menuitem" onClick={() => { setShortcutManageMenuOpen(false); openShortcutManager(); }}><Pencil aria-hidden="true" /><span><strong>管理网站</strong><small>编辑、排序或移动网站</small></span></button>
                       <button type="button" role="menuitem" onClick={() => { setShortcutManageMenuOpen(false); setCategoryModalOpen(true); }}><Grid3X3 aria-hidden="true" /><span><strong>管理分类</strong><small>新增、排序或整理分类</small></span></button>
-                      <button type="button" role="menuitem" onClick={() => { setShortcutManageMenuOpen(false); setShortcutGroupManagerOpen(true); }}><FolderOpen aria-hidden="true" /><span><strong>网站组合</strong><small>一次打开一组常用网站</small></span></button>
                       <button type="button" role="menuitem" onClick={() => openSettings('data')}><BookMarked aria-hidden="true" /><span><strong>导入书签</strong><small>从浏览器迁移常用网站</small></span></button>
                     </div>
                   )}
@@ -2523,7 +2689,25 @@ function App() {
               <div ref={categoryNavigationRef} className="category-navigation">
                 <div className="category-tabs" role="tablist" aria-label="常用网站分类">
                   {primaryCategories.map((category) => (
-                    <button key={category} className={category === activeCategory ? 'active' : ''} type="button" role="tab" aria-selected={category === activeCategory} onClick={() => setActiveCategory(category)}>
+                    <button
+                      key={category}
+                      className={category === activeCategory ? 'active' : ''}
+                      type="button"
+                      role="tab"
+                      aria-selected={category === activeCategory}
+                      onClick={() => { setCategoryContextMenu(null); setActiveCategory(category); }}
+                      onContextMenu={(event) => {
+                        event.preventDefault();
+                        const bounds = event.currentTarget.getBoundingClientRect();
+                        setShortcutContextMenu(null);
+                        setActiveCategory(category);
+                        setCategoryContextMenu({
+                          category,
+                          x: event.clientX || bounds.left + 12,
+                          y: event.clientY || bounds.bottom,
+                        });
+                      }}
+                    >
                       {category}
                     </button>
                   ))}
@@ -2538,6 +2722,18 @@ function App() {
                     <ChevronDown aria-hidden="true" />
                   </label>
                 )}
+                <button
+                  ref={categoryOpenAllRef}
+                  className="category-open-all"
+                  type="button"
+                  disabled={!activeCategoryShortcuts.length}
+                  onClick={() => openShortcutCategory(activeCategory)}
+                  aria-label={activeCategoryShortcuts.length
+                    ? `打开“${activeCategory}”分类的全部 ${activeCategoryShortcuts.length} 个网站`
+                    : `“${activeCategory}”分类暂无网站`}
+                >
+                  <Play aria-hidden="true" />打开全部<span>{activeCategoryShortcuts.length}</span>
+                </button>
                 <div className="category-navigation-measure" aria-hidden="true">
                   <div ref={categoryMeasureRef} className="category-tabs">
                     {categories.slice(0, MAX_VISIBLE_SHORTCUT_CATEGORIES).map((category) => (
@@ -2555,7 +2751,7 @@ function App() {
               <>
                 <div className={`shortcut-grid${state.preferences.compactShortcuts ? ' compact-grid' : ''}`}>
                   {displayedShortcuts.map((shortcut) => (
-                    <ShortcutCard key={shortcut.id} shortcut={shortcut} compact={state.preferences.compactShortcuts} onOpen={recordShortcut} onContextMenu={(item, position) => setShortcutContextMenu({ shortcutId: item.id, ...position })} />
+                    <ShortcutCard key={shortcut.id} shortcut={shortcut} compact={state.preferences.compactShortcuts} onOpen={recordShortcut} onContextMenu={(item, position) => { setCategoryContextMenu(null); setShortcutContextMenu({ shortcutId: item.id, ...position }); }} />
                   ))}
                 </div>
                 {visibleShortcuts.length > shortcutDisplayLimit && (
@@ -2610,13 +2806,28 @@ function App() {
         <ShortcutContextMenu
           shortcut={shortcutContextTarget}
           categories={categories}
+          groups={workspace.shortcutGroups}
           x={shortcutContextMenu.x}
           y={shortcutContextMenu.y}
           onClose={closeShortcutContextMenu}
           onDelete={(shortcut) => removeShortcut(shortcut.id)}
           onEdit={openShortcutEditor}
+          onManageGroups={() => setShortcutGroupManagerOpen(true)}
           onMove={moveShortcutCategory}
           onOpen={openShortcut}
+          onToggleGroup={toggleShortcutInGroup}
+        />
+      )}
+
+      {categoryContextMenu && categories.includes(categoryContextMenu.category) && (
+        <CategoryContextMenu
+          category={categoryContextMenu.category}
+          count={categoryCounts[categoryContextMenu.category] || 0}
+          x={categoryContextMenu.x}
+          y={categoryContextMenu.y}
+          onClose={closeCategoryContextMenu}
+          onManage={() => setCategoryModalOpen(true)}
+          onOpen={() => openShortcutCategory(categoryContextMenu.category)}
         />
       )}
 
@@ -2635,6 +2846,7 @@ function App() {
             <div ref={settingsScrollRef} className="settings-scroll">
               {settingsView === 'home' && (
                 <div className="settings-home">
+                  <BrowserExtensionInstallCard installed={extensionRuntime} version={appVersion} />
                   <nav className="settings-navigation" aria-label="设置分类">
                     <SettingsNavigationItem autoFocus icon={<Palette />} title="外观与桌面" description="背景、搜索与网站密度" summary={`${settingsSceneLabel} · ${state.preferences.searchEngine === 'baidu' ? '百度' : '必应'}`} onClick={() => setSettingsView('appearance')} />
                     <SettingsNavigationItem icon={<AppWindow />} title="组件布局" description="显示、排序与卡片尺寸" summary={`${enabledRailWidgetCount} 个组件 · 辅助 ${enabledAuxiliaryContentCount} 项`} onClick={() => setSettingsView('components')} />
@@ -2759,8 +2971,8 @@ function App() {
                       </>
                     ) : (
                       <>
-                        <div className="sync-account-row muted"><span><CloudOff /></span><span><strong>{deskSync.status === 'extension' ? '扩展使用本地数据' : '本机桌面'}</strong><small>{deskSync.status === 'extension' ? '登录同步请打开网页版微言桌面' : '未登录时，数据只保存在当前浏览器'}</small></span></div>
-                        <button className="install-app-button" type="button" onClick={deskSync.login}><Cloud />{deskSync.status === 'extension' ? '打开网页版同步' : '登录并开启同步'}</button>
+                        <div className="sync-account-row muted"><span><CloudOff /></span><span><strong>本机桌面</strong><small>未登录时，数据只保存在当前浏览器</small></span></div>
+                        <button className="install-app-button" type="button" onClick={deskSync.login}><Cloud />登录并开启同步</button>
                       </>
                     )}
                     {deskSync.error && <p className="settings-error">{deskSync.error}</p>}
@@ -3020,11 +3232,11 @@ function App() {
         />
       )}
 
-      {inboxOpen && <InboxModal items={state.inbox} workspaces={state.workspaces} activeWorkspaceId={workspace.id} initialKind={inboxInitialKind} onAdd={addInboxItem} onClose={() => setInboxOpen(false)} onDelete={removeInboxItem} onOrganize={organizeInboxItem} />}
+      {inboxOpen && <InboxModal items={state.inbox} workspaces={state.workspaces} activeWorkspaceId={workspace.id} initialKind={inboxInitialKind} initialItemId={inboxInitialItemId} saveLabel={saveStatus === 'error' ? '本机保存失败，请先导出备份' : saveStatus === 'saving' ? '正在保存到本机…' : deskSync.user ? `本机已保存 · ${mobileSyncLabel}` : '已保存在本机，未登录账号'} onUpdate={(id, patch) => { setState((current) => ({ ...current, inbox: current.inbox.map((item) => item.id === id ? { ...item, ...patch } : item) })); }} onAdd={addInboxItem} onClose={() => setInboxOpen(false)} onDelete={removeInboxItem} onOrganize={organizeInboxItem} />}
 
-      {onboardingOpen && <OnboardingModal extensionInstalled={isExtensionRuntime()} onComplete={completeOnboarding} onImportBookmarks={importBrowserBookmarks} onTemplate={applyOnboardingTemplate} />}
+      {onboardingOpen && <OnboardingModal extensionInstalled={extensionRuntime} onComplete={completeOnboarding} onImportBookmarks={importBrowserBookmarks} onTemplate={applyOnboardingTemplate} />}
 
-      <CommandPalette open={commandOpen} commands={deskCommands} shortcuts={commandShortcuts} currentWorkspaceId={workspace.id} getDynamicCommands={dynamicCommandsForQuery} onClose={() => setCommandOpen(false)} onOpenShortcut={openCommandShortcut} />
+      <CommandPalette open={commandOpen} initialQuery={commandInitialQuery} resources={commandResources} onLoadTabs={extensionRuntime ? loadSearchTabs : undefined} commands={deskCommands} shortcuts={commandShortcuts} currentWorkspaceId={workspace.id} getDynamicCommands={dynamicCommandsForQuery} onClose={() => { setCommandOpen(false); setCommandInitialQuery(''); }} onOpenShortcut={openCommandShortcut} />
 
       <AssistantPanel
         open={assistantOpen}
@@ -3051,7 +3263,15 @@ function App() {
 
       {syncConflictOpen && deskSync.conflict && <SyncConflictModal onClose={() => setSyncConflictOpen(false)} onKeepLocal={deskSync.keepLocal} onUseCloud={deskSync.useCloud} />}
 
-      {pwa.updateNoticeVisible && <PwaUpdateNotice busy={pwa.updateBusy} onDismiss={pwa.dismissUpdateNotice} onUpdate={pwa.applyUpdate} />}
+      {deskSync.loginError && (
+        <div className="pwa-update-notice extension-login-notice" role="alert">
+          <CircleAlert aria-hidden="true" />
+          <span><strong>{deskSync.user ? '账号已连接，同步尚未完成' : '登录未完成'}</strong><small>{deskSync.loginError}</small></span>
+          <button type="button" onClick={deskSync.user ? () => { deskSync.dismissLoginError(); openSettings('sync'); } : deskSync.login}>{deskSync.user ? '查看同步' : '重试'}</button>
+          <button className="pwa-update-dismiss" type="button" onClick={deskSync.dismissLoginError} aria-label="关闭登录提示"><X /></button>
+        </div>
+      )}
+      {pwa.updateNoticeVisible && !deskSync.loginError && <PwaUpdateNotice busy={pwa.updateBusy} onDismiss={pwa.dismissUpdateNotice} onUpdate={pwa.applyUpdate} />}
       {toast && <div className="toast" role="status"><Check aria-hidden="true" /><span>{toast.message}</span>{toast.undo && <button type="button" onClick={undoToast}><Undo2 />撤销</button>}</div>}
       </div>
 

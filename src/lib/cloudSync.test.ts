@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   clearSyncMetadata,
   deleteCloudState,
+  fetchCloudState,
   logoutCloudSession,
   readSyncMetadata,
   readSyncPausedUserId,
@@ -74,5 +75,34 @@ describe('cloud sync account controls', () => {
     expect(readSyncPausedUserId()).toBe('user-1');
     writeSyncPausedUserId(null);
     expect(readSyncPausedUserId()).toBeNull();
+  });
+
+  it('uses the scoped extension token for the public Desk API', async () => {
+    vi.stubGlobal('location', { protocol: 'chrome-extension:' });
+    vi.stubGlobal('chrome', {
+      storage: {
+        local: {
+          get: vi.fn().mockResolvedValue({
+            'wyandesk.extension.auth.v1': {
+              version: 1,
+              accessToken: 'wyandesk_test-token',
+              expiresAt: new Date(Date.now() + 60_000 * 60).toISOString(),
+              user: { workspaceId: 'wyanhub', userId: 'user-1', userName: 'Alice' },
+            },
+          }),
+          set: vi.fn(),
+          remove: vi.fn(),
+        },
+      },
+    });
+    const request = vi.fn().mockResolvedValue(new Response('{"state":null,"version":0,"updatedAt":null}', { status: 200, headers: { 'Content-Type': 'application/json' } }));
+    vi.stubGlobal('fetch', request);
+
+    await fetchCloudState();
+
+    const [url, init] = request.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('https://desk.wyanhub.com/api/desk/state');
+    expect(init.credentials).toBe('omit');
+    expect(new Headers(init.headers).get('Authorization')).toBe('Bearer wyandesk_test-token');
   });
 });

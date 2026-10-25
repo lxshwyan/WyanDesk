@@ -1,6 +1,5 @@
-const SUMMARY_KEY = 'wyandesk.extension.summary';
-const CAPTURE_KEY = 'wyandesk.extension.captures';
-const SESSION_KEY = 'wyandesk.extension.sessions';
+import { SUMMARY_KEY, DESTINATION_KEY, RESULT_KEY, fallbackSummary, resolveDestination, normalizedURL, bookmarkFolders, collectBookmarks, selectBookmarkNodes } from './capture-core.js';
+import { SESSION_KEY, normalizeSessions } from './session-core.js';
 const extensionAPI = globalThis.chrome;
 
 const workspaceSelect = document.querySelector('#workspace');
@@ -8,15 +7,30 @@ const categorySelect = document.querySelector('#category');
 const captureKindButtons = [...document.querySelectorAll('[data-capture-kind]')];
 const savePageLabel = document.querySelector('#save-page-label');
 const savePageNote = document.querySelector('#save-page-note');
+const shortcutGroupSelect = document.querySelector('#shortcutGroup');
+const newGroupTitleField = document.querySelector('#newGroupTitleField');
 const groupTitleInput = document.querySelector('#groupTitle');
 const savePageButton = document.querySelector('#savePage');
 const saveWindowButton = document.querySelector('#saveWindow');
+const saveWindowLabel = document.querySelector('#save-window-label');
+const saveWindowNote = document.querySelector('#save-window-note');
+const openGroupButton = document.querySelector('#openGroup');
+const openGroupNote = document.querySelector('#open-group-note');
 const importBookmarksButton = document.querySelector('#importBookmarks');
+const loadBookmarksButton = document.querySelector('#loadBookmarks');
+const bookmarkFolderSelect = document.querySelector('#bookmarkFolder');
+const bookmarkModeSelect = document.querySelector('#bookmarkMode');
+const bookmarkOptions = document.querySelector('#bookmarkOptions');
+const bookmarkPreview = document.querySelector('#bookmarkPreview');
+const importBookmarksLabel = document.querySelector('#importBookmarksLabel');
 const exportBookmarksButton = document.querySelector('#exportBookmarks');
 const status = document.querySelector('#status');
 const sessionList = document.querySelector('#session-list');
 let summary = null;
 let captureKind = 'link';
+let bookmarkTree = [];
+let initialized = false;
+let deliveryMessage = '';
 
 function setStatus(message, kind = '') {
   status.textContent = message;
@@ -38,47 +52,83 @@ function renderCategories() {
   }));
 }
 
+function currentGroups() {
+  const groups = currentWorkspace()?.shortcutGroups;
+  return Array.isArray(groups) ? groups : [];
+}
+
+function selectedGroup() {
+  return currentGroups().find((group) => group.id === shortcutGroupSelect.value);
+}
+
+function updateGroupControls() {
+  const group = selectedGroup();
+  newGroupTitleField.hidden = Boolean(group);
+  openGroupButton.hidden = !group;
+  saveWindowLabel.textContent = group ? `加入“${group.title}”` : '创建网站组合';
+  saveWindowNote.textContent = group ? '自动过滤重复网址，保留已有内容' : '保存当前窗口的全部网页';
+  openGroupNote.textContent = group ? `在当前窗口打开 ${group.shortcutIds?.length || 0} 个网站` : '在当前窗口新建标签页';
+}
+
+function renderGroups() {
+  const previous = shortcutGroupSelect.value;
+  const createOption = new Option('＋ 新建网站组合', '');
+  const options = currentGroups().map((group) => new Option(`${group.title} · ${group.shortcutIds?.length || 0} 个网站`, group.id));
+  shortcutGroupSelect.replaceChildren(createOption, ...options);
+  shortcutGroupSelect.value = currentGroups().some((group) => group.id === previous) ? previous : '';
+  updateGroupControls();
+}
+
 async function loadSummary() {
-  const result = await extensionAPI.storage.local.get(SUMMARY_KEY);
-  summary = result[SUMMARY_KEY] || {
-    version: 1,
-    activeWorkspaceId: 'workspace-work',
-    workspaces: [{ id: 'workspace-work', name: '工作', categories: ['常用'], shortcuts: [] }],
-  };
+  const result = await extensionAPI.storage.local.get([SUMMARY_KEY, DESTINATION_KEY, RESULT_KEY]);
+  initialized = Boolean(result[SUMMARY_KEY]?.workspaces?.length);
+  summary = initialized ? result[SUMMARY_KEY] : fallbackSummary;
+  const destination = resolveDestination(summary, result[DESTINATION_KEY]);
   workspaceSelect.replaceChildren(...summary.workspaces.map((workspace) => {
     const option = document.createElement('option');
     option.value = workspace.id;
     option.textContent = workspace.name;
-    option.selected = workspace.id === summary.activeWorkspaceId;
+    option.selected = workspace.id === destination.workspaceId;
     return option;
   }));
   renderCategories();
+  categorySelect.value = destination.category;
+  renderGroups();
+  for (const button of [savePageButton, saveWindowButton, loadBookmarksButton, exportBookmarksButton]) button.disabled = !initialized;
+  if (!initialized) setStatus('请先点击“打开桌面”完成初始化，再回来收藏。');
+  else if (result[RESULT_KEY] && Date.now() - result[RESULT_KEY].createdAt < 300000) setStatus(result[RESULT_KEY].message, result[RESULT_KEY].ok ? 'success' : 'error');
+  else setStatus('已记住目标分组；收藏时会自动在后台打开桌面处理。');
+  await extensionAPI.action.setBadgeText({ text: '' });
+  await extensionAPI.action.setTitle({ title: '收藏到微言桌面' });
+  const [tab] = await extensionAPI.tabs.query({ active: true, currentWindow: true });
+  document.querySelector('#currentPage').textContent = validPage(tab) ? tab.title || new URL(tab.url).hostname : '浏览器内部页不能收藏，请打开普通网页。';
+  if (!validPage(tab)) savePageButton.disabled = true;
 }
 
 function validPage(tab) {
-  return tab?.url && /^https?:\/\//i.test(tab.url);
+  return Boolean(normalizedURL(tab?.url));
 }
 
 async function appendCapture(kind, value) {
-  const result = await extensionAPI.storage.local.get(CAPTURE_KEY);
-  const current = result[CAPTURE_KEY] || { version: 1, items: [], groups: [], bookmarks: [] };
-  const next = {
-    version: 1,
-    items: Array.isArray(current.items) ? current.items.slice(-59) : [],
-    groups: Array.isArray(current.groups) ? current.groups.slice(-19) : [],
-    bookmarks: Array.isArray(current.bookmarks) ? current.bookmarks.slice(-3) : [],
-  };
-  next[kind].push(value);
-  await extensionAPI.storage.local.set({ [CAPTURE_KEY]: next });
+  const result = await extensionAPI.runtime.sendMessage({ type: 'capture', kind, value });
+  if (!result?.ok) throw new Error(result?.message || '扩展后台未响应，请在扩展管理页重新加载后重试');
+  deliveryMessage = result.message;
+  await rememberDestination();
+}
+
+async function rememberDestination() {
+  if (!initialized) return;
+  await extensionAPI.storage.local.set({ [DESTINATION_KEY]: { workspaceId: workspaceSelect.value, category: categorySelect.value } });
 }
 
 async function readSessions() {
   const result = await extensionAPI.storage.local.get(SESSION_KEY);
-  return Array.isArray(result[SESSION_KEY]) ? result[SESSION_KEY] : [];
+  return normalizeSessions(result[SESSION_KEY]);
 }
 
-async function writeSessions(items) {
-  await extensionAPI.storage.local.set({ [SESSION_KEY]: items.slice(0, 20) });
+async function saveSession(session) {
+  const result = await extensionAPI.runtime.sendMessage({ type: 'session.save', session });
+  if (!result?.ok) throw new Error(result?.message || '窗口未保存成功，请重试');
 }
 
 async function renderSessions() {
@@ -111,17 +161,18 @@ async function restoreSession(id) {
 }
 
 async function deleteSession(id) {
-  await writeSessions((await readSessions()).filter((item) => item.id !== id));
+  const result = await extensionAPI.runtime.sendMessage({ type: 'session.delete', id });
+  if (!result?.ok) return setStatus(result?.message || '删除失败，请重试', 'error');
   await renderSessions();
   setStatus('已删除本机会话。', 'success');
 }
 
 function selectCaptureKind(kind) {
-  captureKind = ['link', 'task', 'note'].includes(kind) ? kind : 'link';
+  captureKind = ['link', 'task', 'note', 'reading'].includes(kind) ? kind : 'link';
   captureKindButtons.forEach((button) => button.classList.toggle('active', button.dataset.captureKind === captureKind));
-  categorySelect.disabled = captureKind !== 'link';
-  savePageLabel.textContent = ({ link: '收藏当前网页', task: '保存为任务', note: '保存到便签' })[captureKind];
-  savePageNote.textContent = ({ link: '加入当前桌面分类', task: '添加网页标题和链接', note: '追加网页标题和链接' })[captureKind];
+  captureKindButtons.forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.captureKind === captureKind)));
+  savePageLabel.textContent = ({ link: '收藏当前网页', reading: '加入稍后阅读', task: '保存为任务', note: '保存到便签' })[captureKind];
+  savePageNote.textContent = ({ link: '加入当前桌面分类', reading: '在收集箱中保留来源，之后再读', task: '添加网页标题和链接', note: '追加网页标题和链接' })[captureKind];
 }
 
 async function requestBookmarksPermission() {
@@ -129,46 +180,55 @@ async function requestBookmarksPermission() {
   if (!granted) throw new Error('未获得书签权限，未读取或修改任何书签');
 }
 
-function categoryForTrail(trail) {
-  const meaningful = trail.filter(Boolean);
-  if (meaningful.length <= 1) return categorySelect.value || '常用';
-  return meaningful.at(-1).trim().slice(0, 16) || categorySelect.value || '常用';
+function selectedBookmarkNodes() {
+  return selectBookmarkNodes(bookmarkTree, bookmarkFolderSelect.value);
 }
 
-function flattenBookmarks(nodes, trail = [], entries = []) {
-  for (const node of nodes || []) {
-    if (entries.length >= 5000) break;
-    if (node.url && /^https?:\/\//i.test(node.url)) {
-      entries.push({
-        title: (node.title || new URL(node.url).hostname).trim().slice(0, 50),
-        url: node.url,
-        category: categoryForTrail(trail),
-      });
-      continue;
-    }
-    const nextTrail = node.title ? [...trail, node.title] : trail;
-    flattenBookmarks(node.children, nextTrail, entries);
-  }
-  return entries;
+function bookmarkImportPlan() {
+  const result = collectBookmarks(selectedBookmarkNodes(), { category: categorySelect.value, preserveFolders: bookmarkModeSelect.value === 'folders' });
+  const existing = new Set((currentWorkspace()?.shortcuts || []).map((shortcut) => normalizedURL(shortcut.url)));
+  const entries = result.entries.filter((entry) => !existing.has(entry.url));
+  return { ...result, entries, existing: result.entries.length - entries.length };
+}
+
+function updateBookmarkPreview() {
+  if (bookmarkOptions.hidden) return;
+  const plan = bookmarkImportPlan();
+  bookmarkPreview.textContent = `可导入 ${plan.entries.length} 个；跳过 ${plan.existing} 个桌面已有、${plan.duplicates} 个重复、${plan.unsupported} 个非网页书签。${plan.overflow ? `另有 ${plan.overflow} 个超出单次 5000 条上限，请分文件夹导入。` : ''}已有网站不移动分组。`;
+  importBookmarksButton.disabled = !plan.entries.length;
+  importBookmarksLabel.textContent = bookmarkModeSelect.value === 'folders' ? `按原文件夹导入 ${plan.entries.length} 个` : `导入 ${plan.entries.length} 个到“${categorySelect.value}”`;
+}
+
+async function loadBrowserBookmarks() {
+  loadBookmarksButton.disabled = true;
+  try {
+    await requestBookmarksPermission();
+    bookmarkTree = await extensionAPI.bookmarks.getTree();
+    bookmarkFolderSelect.replaceChildren(new Option('全部浏览器书签', ''), ...bookmarkFolders(bookmarkTree).map((folder) => new Option(folder.title, folder.id)));
+    bookmarkOptions.hidden = false;
+    updateBookmarkPreview();
+    setStatus('选择来源和导入方式后，点击导入；不会删除或修改原书签。');
+    bookmarkFolderSelect.focus();
+  } catch (error) {
+    setStatus(error instanceof Error ? error.message : '读取书签失败，请重试', 'error');
+  } finally { loadBookmarksButton.disabled = false; }
 }
 
 async function importBrowserBookmarks() {
   importBookmarksButton.disabled = true;
   try {
-    await requestBookmarksPermission();
-    const entries = flattenBookmarks(await extensionAPI.bookmarks.getTree());
+    const { entries } = bookmarkImportPlan();
     if (!entries.length) throw new Error('浏览器里没有可导入的网页书签');
     await appendCapture('bookmarks', {
       id: crypto.randomUUID(),
       workspaceId: workspaceSelect.value,
       entries,
     });
-    const capped = entries.length === 5000 ? '（已达到单次 5000 条上限）' : '';
-    setStatus(`已送入 ${entries.length} 个书签${capped}，微言桌面将自动去重。`, 'success');
+    setStatus(`已提交 ${entries.length} 个书签。${deliveryMessage}`, 'success');
   } catch (error) {
     setStatus(error instanceof Error ? error.message : '导入书签失败，请重试', 'error');
   } finally {
-    importBookmarksButton.disabled = false;
+    updateBookmarkPreview();
   }
 }
 
@@ -215,15 +275,18 @@ async function saveCurrentPage() {
   try {
     const [tab] = await extensionAPI.tabs.query({ active: true, currentWindow: true });
     if (!validPage(tab)) throw new Error('当前页面不能收藏');
+    const url = normalizedURL(tab.url);
+    const existing = captureKind === 'link' && currentWorkspace()?.shortcuts?.find((shortcut) => normalizedURL(shortcut.url) === url);
+    if (existing) return setStatus(`此网页已在“${existing.category}”分组，不重复添加；可在桌面右键移动分组。`, 'success');
     await appendCapture('items', {
       id: crypto.randomUUID(),
       kind: captureKind,
       title: tab.title || new URL(tab.url).hostname,
-      url: tab.url,
+      url,
       workspaceId: workspaceSelect.value,
       category: categorySelect.value,
     });
-    setStatus(({ link: '已收藏当前网页。', task: '已保存为当前桌面任务。', note: '已追加到当前桌面便签。' })[captureKind], 'success');
+    setStatus(({ link: '已提交当前网页收藏。', reading: '已提交稍后阅读。', task: '已提交当前网页任务。', note: '已提交当前网页便签。' })[captureKind] + deliveryMessage, 'success');
   } catch (error) {
     setStatus(error instanceof Error ? error.message : '收藏失败，请重试', 'error');
   } finally {
@@ -240,20 +303,23 @@ async function saveCurrentWindow() {
       .filter(validPage)
       .map((tab) => ({ title: tab.title || new URL(tab.url).hostname, url: tab.url, pinned: Boolean(tab.pinned), active: Boolean(tab.active), index: tab.index }));
     if (!tabs.length) throw new Error('当前窗口没有可保存的网页');
+    if (tabs.length > 200) throw new Error('当前窗口超过 200 个网页，请分窗口保存');
     const now = new Date();
     const fallbackTitle = `标签组 ${now.getMonth() + 1}月${now.getDate()}日 ${now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false })}`;
     const id = crypto.randomUUID();
-    const title = groupTitleInput.value.trim() || fallbackTitle;
+    const group = selectedGroup();
+    const title = group?.title || groupTitleInput.value.trim() || fallbackTitle;
     await appendCapture('groups', {
       id,
       title,
+      targetGroupId: group?.id,
       workspaceId: workspaceSelect.value,
       category: categorySelect.value,
       tabs,
     });
-    await writeSessions([{ id, title, tabs, createdAt: new Date().toISOString() }, ...(await readSessions()).filter((item) => item.id !== id)]);
+    await saveSession({ id, title, tabs, createdAt: new Date().toISOString() });
     await renderSessions();
-    setStatus(`已暂存 ${tabs.length} 个网页，并创建网站组合。`, 'success');
+    setStatus((group ? `已将 ${tabs.length} 个网页送入“${group.title}”，将自动去重。` : `已暂存 ${tabs.length} 个网页并提交网站组合。`) + deliveryMessage, 'success');
   } catch (error) {
     setStatus(error instanceof Error ? error.message : '保存窗口失败，请重试', 'error');
   } finally {
@@ -261,22 +327,58 @@ async function saveCurrentWindow() {
   }
 }
 
-workspaceSelect.addEventListener('change', renderCategories);
+async function openSelectedGroup() {
+  const group = selectedGroup();
+  if (!group) return setStatus('请先选择一个已有组合', 'error');
+  const workspace = currentWorkspace();
+  const shortcutById = new Map((workspace?.shortcuts || []).map((shortcut) => [shortcut.id, shortcut]));
+  const seen = new Set();
+  const shortcuts = (group.shortcutIds || [])
+    .map((id) => shortcutById.get(id))
+    .filter((shortcut) => {
+      if (!validPage(shortcut) || seen.has(shortcut.url)) return false;
+      seen.add(shortcut.url);
+      return true;
+    });
+  if (!shortcuts.length) return setStatus('这个组合里暂时没有可打开的网站', 'error');
+  if (shortcuts.length > 12 && !globalThis.confirm(`“${group.title}”有 ${shortcuts.length} 个网站，确认全部打开？`)) return;
+  openGroupButton.disabled = true;
+  try {
+    for (const shortcut of shortcuts) {
+      await extensionAPI.tabs.create({ url: shortcut.url, active: false });
+    }
+    setStatus(`已在当前窗口打开“${group.title}”的 ${shortcuts.length} 个网站。`, 'success');
+  } catch (error) {
+    setStatus(error instanceof Error ? error.message : '打开组合失败，请重试', 'error');
+  } finally {
+    openGroupButton.disabled = false;
+  }
+}
+
+workspaceSelect.addEventListener('change', () => { renderCategories(); renderGroups(); updateBookmarkPreview(); void rememberDestination().catch(() => setStatus('未能记住目标分组，请重试', 'error')); });
+categorySelect.addEventListener('change', () => { updateBookmarkPreview(); void rememberDestination().catch(() => setStatus('未能记住目标分组，请重试', 'error')); });
+shortcutGroupSelect.addEventListener('change', updateGroupControls);
 captureKindButtons.forEach((button) => button.addEventListener('click', () => selectCaptureKind(button.dataset.captureKind)));
 savePageButton.addEventListener('click', saveCurrentPage);
 saveWindowButton.addEventListener('click', saveCurrentWindow);
+openGroupButton.addEventListener('click', openSelectedGroup);
 importBookmarksButton.addEventListener('click', importBrowserBookmarks);
+loadBookmarksButton.addEventListener('click', loadBrowserBookmarks);
+bookmarkFolderSelect.addEventListener('change', updateBookmarkPreview);
+bookmarkModeSelect.addEventListener('change', updateBookmarkPreview);
 exportBookmarksButton.addEventListener('click', exportDesktopBookmarks);
 if (extensionAPI?.storage?.local) {
   void Promise.all([loadSummary(), renderSessions()]).catch(() => setStatus('请先打开一个微言桌面新标签页', 'error'));
   selectCaptureKind('link');
 } else {
-  summary = { version: 1, activeWorkspaceId: 'workspace-work', workspaces: [{ id: 'workspace-work', name: '工作', categories: ['常用', '办公'], shortcuts: [] }] };
+  summary = { version: 1, activeWorkspaceId: 'workspace-work', workspaces: [{ id: 'workspace-work', name: '工作', categories: ['常用', '办公'], shortcuts: [], shortcutGroups: [] }] };
   workspaceSelect.replaceChildren(...summary.workspaces.map((workspace) => new Option(workspace.name, workspace.id)));
   renderCategories();
+  renderGroups();
   savePageButton.disabled = true;
   saveWindowButton.disabled = true;
   importBookmarksButton.disabled = true;
+  loadBookmarksButton.disabled = true;
   exportBookmarksButton.disabled = true;
   setStatus('扩展界面预览：安装后可使用收藏功能。');
 }

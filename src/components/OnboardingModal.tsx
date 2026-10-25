@@ -59,8 +59,8 @@ export function OnboardingModal({ extensionInstalled, onComplete, onImportBookma
             <span>{extensionInstalled ? <Check /> : <Download />}</span>
             <strong>{extensionInstalled ? '扩展已安装，准备完成' : '安装 WyanDesk 新标签页扩展'}</strong>
             <p>{extensionInstalled ? '以后打开新标签页就能回到微言桌面，并可通过扩展按钮收藏网页、保存窗口或直接迁移浏览器书签。' : '打开新标签页就是微言桌面，还能收藏网页、保存窗口，并在扩展按钮里一键导入或导出浏览器书签。'}</p>
-            {!extensionInstalled && <a href="/downloads/wyandesk-extension.zip" download><Download />下载 Chrome / Edge 扩展包</a>}
-            <small>{extensionInstalled ? '你仍然可以在设置里管理同步、备份和桌面数据。' : '解压后在扩展管理页选择“加载已解压的扩展程序”。安装时由浏览器再次确认。'}</small>
+            {!extensionInstalled && <a href="/downloads/wyandesk-extension.zip" download><Download />下载测试版 ZIP</a>}
+            <small>{extensionInstalled ? '你仍然可以在设置里管理同步、备份和桌面数据。' : '完整安装步骤和更新方法在“设置 → 导入与备份 → 应用与操作”里随时可以查看。'}</small>
             <div className="onboarding-products">桌面里的“微言服务”分类可按需打开表单、工具箱、活动与收集箱，不会主动弹出推广。</div>
           </div>
         )}

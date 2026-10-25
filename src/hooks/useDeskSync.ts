@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import type { DeskState } from '../types';
 import { isExtensionRuntime } from '../lib/extensionBridge';
+import { loginExtension } from '../lib/extensionAuth';
 import { migrateDeskState } from '../lib/storage';
 import {
   decryptDeskState,
@@ -34,7 +35,7 @@ import {
   type SyncMetadata,
 } from '../lib/cloudSync';
 
-export type DeskSyncStatus = 'local' | 'checking' | 'synced' | 'saving' | 'conflict' | 'locked' | 'error' | 'extension';
+export type DeskSyncStatus = 'local' | 'checking' | 'synced' | 'saving' | 'conflict' | 'locked' | 'error';
 
 class CloudEncryptionLockedError extends Error {}
 
@@ -42,6 +43,8 @@ interface UseDeskSyncResult {
   status: DeskSyncStatus;
   user: CloudUser | null;
   error: string;
+  loginError: string;
+  dismissLoginError: () => void;
   conflict: CloudEnvelope | null;
   encryptionEnabled: boolean;
   login: () => void;
@@ -59,9 +62,10 @@ interface UseDeskSyncResult {
 }
 
 export function useDeskSync(state: DeskState, setState: Dispatch<SetStateAction<DeskState>>, isNewBrowser: boolean): UseDeskSyncResult {
-  const [status, setStatus] = useState<DeskSyncStatus>(() => isExtensionRuntime() ? 'extension' : 'checking');
+  const [status, setStatus] = useState<DeskSyncStatus>('checking');
   const [user, setUser] = useState<CloudUser | null>(null);
   const [error, setError] = useState('');
+  const [loginError, setLoginError] = useState('');
   const [conflict, setConflict] = useState<CloudEnvelope | null>(null);
   const [encryptionEnabled, setEncryptionEnabled] = useState(false);
   const stateRef = useRef(state);
@@ -69,6 +73,7 @@ export function useDeskSync(state: DeskState, setState: Dispatch<SetStateAction<
   const metaRef = useRef<SyncMetadata | null>(readSyncMetadata());
   const pendingUploadRef = useRef<Promise<CloudEnvelope> | null>(null);
   const startedRef = useRef(false);
+  const loginPendingRef = useRef(false);
   const encryptedRef = useRef(false);
 
   useEffect(() => {
@@ -169,10 +174,6 @@ export function useDeskSync(state: DeskState, setState: Dispatch<SetStateAction<
   }, [decodeCloudValue, isNewBrowser, remember, setState, upload]);
 
   const syncNow = useCallback(async (resumePaused = true) => {
-    if (isExtensionRuntime()) {
-      window.open('https://desk.wyanhub.com/', '_blank', 'noopener,noreferrer');
-      return;
-    }
     setStatus('checking');
     try {
       const currentUser = await fetchCloudUser();
@@ -198,7 +199,7 @@ export function useDeskSync(state: DeskState, setState: Dispatch<SetStateAction<
   }, [reconcile]);
 
   useEffect(() => {
-    if (startedRef.current || isExtensionRuntime()) return;
+    if (startedRef.current) return;
     startedRef.current = true;
     void syncNow(false);
   }, [syncNow]);
@@ -332,11 +333,38 @@ export function useDeskSync(state: DeskState, setState: Dispatch<SetStateAction<
 
   const login = useCallback(() => {
     if (isExtensionRuntime()) {
-      window.open('https://desk.wyanhub.com/', '_blank', 'noopener,noreferrer');
+      if (loginPendingRef.current) return;
+      loginPendingRef.current = true;
+      setError('');
+      setLoginError('');
+      setStatus('checking');
+      void (async () => {
+        let currentUser: CloudUser;
+        try {
+          currentUser = await loginExtension();
+        } catch (cause) {
+          const message = cause instanceof Error ? cause.message : '扩展登录没有完成';
+          setError(message);
+          setLoginError(message);
+          setStatus('local');
+          return;
+        }
+        userRef.current = currentUser;
+        setUser(currentUser);
+        writeSyncPausedUserId(null);
+        try {
+          await reconcile(currentUser);
+        } catch (cause) {
+          const message = cause instanceof Error ? cause.message : '暂时无法连接同步服务';
+          setError(message);
+          setLoginError(message);
+          setStatus(cause instanceof CloudEncryptionLockedError ? 'locked' : 'error');
+        }
+      })().finally(() => { loginPendingRef.current = false; });
       return;
     }
     window.location.assign(cloudLoginURL());
-  }, []);
+  }, [reconcile]);
 
   const logout = useCallback(async () => {
     if (!userRef.current) return;
@@ -344,12 +372,17 @@ export function useDeskSync(state: DeskState, setState: Dispatch<SetStateAction<
     try {
       await logoutCloudSession();
       rememberSessionPassphrase('');
-      window.location.assign('/');
+      userRef.current = null;
+      setUser(null);
+      metaRef.current = null;
+      clearSyncMetadata();
+      setStatus('local');
+      if (!isExtensionRuntime()) window.location.assign('/');
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : '退出失败，请稍后重试');
       throw cause;
     }
   }, []);
 
-  return { status, user, error, conflict, encryptionEnabled, login, logout, syncNow, keepLocal, useCloud, listRevisions, restoreRevision, deleteCloudData, submitFeedback, enableEncryption, unlockEncryption, disableEncryption };
+  return { status, user, error, loginError, dismissLoginError: () => setLoginError(''), conflict, encryptionEnabled, login, logout, syncNow, keepLocal, useCloud, listRevisions, restoreRevision, deleteCloudData, submitFeedback, enableEncryption, unlockEncryption, disableEncryption };
 }

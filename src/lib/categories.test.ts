@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { categoryDeleteTarget, categoryExists, cleanCategoryName, deleteCategory, moveCategory, renameCategory } from './categories';
+import { categoryDeleteTarget, categoryExists, cleanCategoryName, deleteCategory, moveCategory, renameCategory, shortcutsForCategory } from './categories';
 import type { Shortcut } from '../types';
 
 const shortcuts: Shortcut[] = [
@@ -19,6 +19,12 @@ describe('category helpers', () => {
     expect(moveCategory(categories, '学习', -1)).toEqual(['学习', '常用', '生活']);
     expect(categories).toEqual(['常用', '学习', '生活']);
     expect(moveCategory(categories, '常用', -1)).toBe(categories);
+  });
+
+  it('returns every shortcut in the selected category without changing their order', () => {
+    const mixed = [shortcuts[1], shortcuts[0], { ...shortcuts[1], id: 'three' }];
+    expect(shortcutsForCategory(mixed, '学习').map((shortcut) => shortcut.id)).toEqual(['two', 'three']);
+    expect(shortcutsForCategory(mixed, '不存在')).toEqual([]);
   });
 
   it('renames a category and every shortcut inside it', () => {

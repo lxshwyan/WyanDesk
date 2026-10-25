@@ -1,4 +1,5 @@
 import type { DeskState, DeskWorkspace, Shortcut } from '../types';
+import { readingURL } from './readingList';
 
 const SUMMARY_KEY = 'wyandesk.extension.summary';
 const CAPTURE_KEY = 'wyandesk.extension.captures';
@@ -11,12 +12,14 @@ export interface ExtensionSummary {
     name: string;
     categories: string[];
     shortcuts: Array<{ id: string; title: string; url: string; category: string }>;
+    shortcutGroups: Array<{ id: string; title: string; shortcutIds: string[] }>;
   }>;
 }
 
 export interface ExtensionCaptureItem {
   id: string;
-  kind?: 'link' | 'task' | 'note';
+  kind?: 'link' | 'task' | 'note' | 'reading';
+  excerpt?: string;
   title: string;
   url: string;
   workspaceId: string;
@@ -26,6 +29,7 @@ export interface ExtensionCaptureItem {
 export interface ExtensionCaptureGroup {
   id: string;
   title: string;
+  targetGroupId?: string;
   workspaceId: string;
   category: string;
   tabs: Array<{ title: string; url: string }>;
@@ -50,6 +54,7 @@ interface ChromeStorageArea {
 }
 
 interface ChromeLike {
+  runtime?: { sendMessage: (message: unknown) => Promise<unknown> };
   storage?: {
     local: ChromeStorageArea;
     onChanged: {
@@ -59,12 +64,26 @@ interface ChromeLike {
   };
 }
 
+export async function acknowledgeExtensionCaptures(queue: ExtensionCaptureQueue): Promise<void> {
+  const runtime = chromeAPI()?.runtime;
+  if (!isExtensionRuntime() || !runtime) return;
+  await runtime.sendMessage({ type: 'capture.ack', ids: {
+    items: queue.items.map((item) => item.id),
+    groups: queue.groups.map((item) => item.id),
+    bookmarks: queue.bookmarks.map((item) => item.id),
+  } });
+}
+
 function chromeAPI(): ChromeLike | undefined {
   return (globalThis as unknown as { chrome?: ChromeLike }).chrome;
 }
 
 export function isExtensionRuntime(): boolean {
-  return window.location.protocol === 'chrome-extension:' && Boolean(chromeAPI()?.storage?.local);
+  return globalThis.location?.protocol === 'chrome-extension:' && Boolean(chromeAPI()?.storage?.local);
+}
+
+export function deskHomeURL(): string {
+  return isExtensionRuntime() ? './index.html' : '/';
 }
 
 export async function publishExtensionSummary(state: DeskState): Promise<void> {
@@ -82,6 +101,11 @@ export async function publishExtensionSummary(state: DeskState): Promise<void> {
         title: shortcut.title,
         url: shortcut.url,
         category: shortcut.category,
+      })),
+      shortcutGroups: workspace.shortcutGroups.map((group) => ({
+        id: group.id,
+        title: group.title,
+        shortcutIds: group.shortcutIds,
       })),
     })),
   };
@@ -106,7 +130,7 @@ export function subscribeExtensionCaptures(handler: (queue: ExtensionCaptureQueu
   let active = true;
   const deliver = (value: unknown) => {
     const queue = validQueue(value);
-    if (active && queue) handler(queue);
+    if (active && queue && (queue.items.length || queue.groups.length || queue.bookmarks.length)) handler(queue);
   };
   const listener = (changes: Record<string, { newValue?: unknown }>, areaName: string) => {
     if (areaName === 'local' && changes[CAPTURE_KEY]) deliver(changes[CAPTURE_KEY].newValue);
@@ -123,7 +147,7 @@ function normalized(value: string): string {
   try {
     const url = new URL(value);
     if (!['http:', 'https:'].includes(url.protocol)) return '';
-    url.hash = '';
+    if (!/^#(?:\/|!\/)/.test(url.hash)) url.hash = '';
     return url.toString();
   } catch {
     return '';
@@ -147,15 +171,35 @@ function addCategory(workspace: DeskWorkspace, category: string): DeskWorkspace 
   return workspace.categories.includes(category) ? workspace : { ...workspace, categories: [...workspace.categories, category] };
 }
 
-export function applyExtensionCaptures(state: DeskState, queue: ExtensionCaptureQueue): { state: DeskState; addedSites: number; addedGroups: number; addedTasks: number; addedNotes: number } {
+export function applyExtensionCaptures(state: DeskState, queue: ExtensionCaptureQueue): { state: DeskState; addedSites: number; addedGroups: number; updatedGroups: number; addedTasks: number; addedNotes: number; addedReadings: number } {
   let addedSites = 0;
   let addedGroups = 0;
+  let addedReadings = 0;
+  const inbox = [...state.inbox];
+  const workspaceIds = new Set(state.workspaces.map((item) => item.id));
+  for (const item of queue.items) {
+    if (item.kind !== 'reading' || !workspaceIds.has(item.workspaceId)) continue;
+    const url = readingURL(item.url);
+    if (!url) continue;
+    const id = `extension-reading-${item.id}`;
+    if (inbox.some((entry) => entry.id === id)) continue;
+    const excerpt = typeof item.excerpt === 'string' ? item.excerpt.trim().slice(0, 2000) : '';
+    const existingIndex = inbox.findIndex((entry) => entry.kind === 'link' && entry.url === url && (entry.excerpt || '') === excerpt);
+    if (existingIndex >= 0) {
+      if (inbox[existingIndex].readAt) { inbox[existingIndex] = { ...inbox[existingIndex], readAt: undefined }; addedReadings++; }
+      continue;
+    }
+    inbox.unshift({ id, kind: 'link', content: item.title.trim().slice(0, 500) || new URL(url).hostname, url, createdAt: new Date().toISOString(), ...(excerpt ? { excerpt } : {}) });
+    addedReadings++;
+  }
+	let updatedGroups = 0;
 	let addedTasks = 0;
 	let addedNotes = 0;
   const workspaces = state.workspaces.map((workspace) => {
     let next = workspace;
     const captures = queue.items.filter((item) => item.workspaceId === workspace.id);
     for (const item of captures) {
+      if (item.kind === 'reading') continue;
       const url = normalized(item.url);
 		if (!url) continue;
 		if (item.kind === 'task') {
@@ -183,7 +227,8 @@ export function applyExtensionCaptures(state: DeskState, queue: ExtensionCapture
     const groups = queue.groups.filter((group) => group.workspaceId === workspace.id);
     for (const group of groups) {
       const groupId = `extension-group-${group.id}`;
-      if (next.shortcutGroups.some((item) => item.id === groupId)) continue;
+      const targetGroup = group.targetGroupId ? next.shortcutGroups.find((item) => item.id === group.targetGroupId) : undefined;
+      if (!targetGroup && next.shortcutGroups.some((item) => item.id === groupId)) continue;
       const category = group.category.trim().slice(0, 16) || next.categories[0] || '常用';
       next = addCategory(next, category);
       const shortcutIds: string[] = [];
@@ -201,25 +246,37 @@ export function applyExtensionCaptures(state: DeskState, queue: ExtensionCapture
         addedSites += 1;
       });
       if (!shortcutIds.length) continue;
+      if (targetGroup) {
+        const mergedIds = [...new Set([...targetGroup.shortcutIds, ...shortcutIds])];
+        if (mergedIds.length !== targetGroup.shortcutIds.length) {
+          next = {
+            ...next,
+            shortcutGroups: next.shortcutGroups.map((item) => item.id === targetGroup.id ? { ...item, shortcutIds: mergedIds } : item),
+          };
+          updatedGroups += 1;
+        }
+        continue;
+      }
       next = { ...next, shortcutGroups: [...next.shortcutGroups, { id: groupId, title: group.title.trim().slice(0, 30) || '浏览器窗口', shortcutIds }] };
       addedGroups += 1;
     }
 
     const bookmarkBatches = queue.bookmarks.filter((batch) => batch.workspaceId === workspace.id);
+    const knownURLs = new Set(next.shortcuts.map((shortcut) => normalized(shortcut.url)));
     for (const batch of bookmarkBatches) {
+      const additions: Shortcut[] = [];
       batch.entries.forEach((entry, index) => {
         const url = normalized(entry.url);
-        if (!url || next.shortcuts.some((shortcut) => normalized(shortcut.url) === url)) return;
+        if (!url || knownURLs.has(url)) return;
+        knownURLs.add(url);
         const category = entry.category.trim().slice(0, 16) || next.categories[0] || '常用';
         next = addCategory(next, category);
-        next = {
-          ...next,
-          shortcuts: [...next.shortcuts, shortcutFor(`extension-bookmark-${batch.id}-${index}`, entry.title, url, category)],
-        };
+        additions.push(shortcutFor(`extension-bookmark-${batch.id}-${index}`, entry.title, url, category));
         addedSites += 1;
       });
+      if (additions.length) next = { ...next, shortcuts: [...next.shortcuts, ...additions] };
     }
     return next;
   });
-  return { state: { ...state, workspaces }, addedSites, addedGroups, addedTasks, addedNotes };
+  return { state: { ...state, workspaces, inbox }, addedSites, addedGroups, updatedGroups, addedTasks, addedNotes, addedReadings };
 }

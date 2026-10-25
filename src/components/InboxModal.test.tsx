@@ -16,6 +16,7 @@ describe('InboxModal', () => {
         onClose={() => undefined}
         onDelete={() => undefined}
         onOrganize={() => undefined}
+        onUpdate={() => undefined}
       />,
     );
     expect(html).toContain('<option value="task" selected="">');

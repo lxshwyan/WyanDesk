@@ -1,0 +1,239 @@
+.header-actions .desk-relax-entry {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: auto;
+  min-width: 38px;
+  height: 38px;
+  padding: 0 10px;
+  border: 0;
+  background: transparent;
+  border-radius: var(--radius-control);
+  font-size: var(--type-control);
+  font-weight: 400;
+  white-space: nowrap;
+}
+.desk-relax-entry[aria-expanded="true"] {
+  background: rgba(255, 255, 255, .78);
+  color: var(--blue);
+}
+.theme-night .desk-relax-entry[aria-expanded="true"],
+.theme-cyber .desk-relax-entry[aria-expanded="true"] {
+  background: rgba(111, 146, 197, .2);
+  color: #f1f6ff;
+}
+.desk-slow-bell {
+  position: relative;
+  min-width: 44px;
+  min-height: 44px;
+}
+.desk-slow-bell > span {
+  position: absolute;
+  right: 2px;
+  top: 1px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 3px;
+  border-radius: 9px;
+  color: #fff;
+  background: #8b4848;
+  font-size: 12px;
+  line-height: 16px;
+}
+.desk-slow-messages {
+  width: min(520px, calc(100vw - 28px));
+  max-height: min(650px, calc(100dvh - 40px));
+  overflow: auto;
+}
+.desk-slow-messages .modal-heading h2,
+.desk-slow-row strong {
+  font-weight: 400;
+}
+.desk-slow-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 12px 0;
+}
+.desk-slow-toolbar a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--blue);
+}
+.desk-slow-toolbar button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+}
+.desk-slow-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+}
+.desk-slow-row a {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  text-decoration: none;
+  color: var(--text);
+}
+.desk-slow-row a:hover strong {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.desk-slow-row span,
+.desk-slow-row small {
+  color: var(--muted);
+  font-size: 12px;
+}
+.desk-slow-row strong {
+  font-size: 16px;
+  overflow-wrap: anywhere;
+}
+.desk-slow-empty {
+  padding: 32px 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.desk-slow-error {
+  color: var(--text);
+  background: var(--surface-muted);
+  padding: 10px 12px;
+  border-radius: 9px;
+}
+@media (max-width: 1200px) {
+  .header-actions .desk-relax-entry {
+    padding: 0;
+    width: 44px;
+  }
+  .desk-relax-entry span {
+    display: none;
+  }
+}
+@media (max-width: 620px) {
+  .header-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .header-actions .desk-relax-entry {
+    width: 42px;
+    min-width: 42px;
+    height: 42px;
+  }
+}
+@media (max-width: 620px) {
+  .desk-header:has(.desk-relax-entry) { height: auto; min-height: 66px; padding-top: 8px; padding-bottom: 8px; }
+  .desk-header:has(.desk-relax-entry) .header-actions { max-width: calc(100% - 43px); }
+}
+@media (max-width: 350px) {
+  .desk-header:has(.desk-relax-entry) .header-actions { max-width: 100%; }
+}
+
+.desk-relax-launcher {
+  position: fixed;
+  inset: var(--launcher-top, 68px) var(--launcher-right, 24px) auto auto;
+  width: min(340px, calc(100vw - 24px));
+  max-height: calc(100dvh - var(--launcher-top, 68px) - 12px);
+  overflow: auto;
+  margin: 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--assistant-surface, #f8fafd);
+  color: var(--text);
+  box-shadow: var(--shadow);
+  font-weight: 400;
+  scrollbar-width: thin;
+  scrollbar-color: #a9b8ca transparent;
+}
+.desk-relax-launcher > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.desk-relax-launcher h2 {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.4;
+  font-weight: 400;
+}
+.desk-relax-launcher > header .icon-button {
+  width: 32px;
+  height: 32px;
+  color: var(--muted);
+  background: transparent;
+}
+.desk-relax-launcher > header .icon-button:hover {
+  color: var(--text);
+  background: var(--surface-muted);
+  transform: none;
+}
+.desk-relax-launcher a {
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 400;
+}
+.desk-random-relax {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  padding: 10px 12px;
+  border-radius: var(--radius-control);
+  background: #e8f1fd;
+  font-size: 14px;
+}
+.desk-random-relax > span { flex: 1; }
+.desk-relax-launcher .desk-random-relax { color: var(--blue); }
+.desk-relax-quick {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin: 10px 0 12px;
+}
+.desk-relax-quick a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px;
+  min-height: 40px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: #fff;
+  font-size: 13px;
+}
+.desk-relax-quick svg { color: var(--muted); flex: none; }
+.desk-relax-social { border-top: 1px solid var(--line); padding-top: 4px; }
+.desk-relax-social a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 58px;
+  padding: 8px;
+  border-radius: var(--radius-control);
+  font-size: 14px;
+}
+.desk-relax-social a > span { flex: 1; }
+.desk-relax-social svg { color: var(--muted); flex: none; }
+.desk-relax-social small { display: block; margin-top: 3px; font-size: 12px; color: var(--muted); line-height: 1.4; }
+.desk-relax-launcher a:hover { background: #edf2fa; }
+.desk-relax-launcher .desk-random-relax:hover { background: #d7e4f4; }
+.desk-relax-launcher footer { border-top: 1px solid var(--line); margin-top: 4px; padding-top: 4px; }
+.desk-relax-launcher footer a { display: flex; align-items: center; justify-content: space-between; min-height: 40px; padding: 8px; font-size: 13px; color: #355675; border-radius: var(--radius-control); }
+.desk-relax-launcher :is(a, button):focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+@media (max-width: 620px) {
+  .desk-relax-launcher > header .icon-button { width: 44px; height: 44px; }
+  .desk-relax-quick a, .desk-relax-launcher footer a { min-height: 44px; }
+}
+@media (max-width: 350px) {
+  .desk-relax-quick { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

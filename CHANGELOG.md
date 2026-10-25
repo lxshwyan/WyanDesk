@@ -2,7 +2,47 @@
 
 All notable changes to WyanDesk are documented here.
 
-## [Unreleased]
+## [0.6.2] - 2026-10-25
+
+### Changed since 0.5.0
+
+- Added compact game shortcuts for quick, slow, and realtime activities in WyanHub Toolbox, with native popover dismissal and mobile spacing.
+- Added account-scoped persistent slow-interaction notifications with direct links and version-aware read state; visible-page polling is separate from desktop encrypted sync and does not provide closed-browser push.
+- Added same-origin website monitoring integration, removed from extension builds to retain Manifest V3 script constraints.
+- Synchronized the standalone frontend, extension authorization/capture improvements, and official extension ZIP to GitHub and Gitee. Local desktop features remain usable without a backend; hosted account/API services are separate.
+
+## [0.5.0] - 2026-10-23
+
+### Added
+
+- Unified content search for tasks, workspace note bodies, reading excerpts and remarks, with direct navigation to the matched item; optional, user-initiated current-window tab search and activation in the extension.
+- Read/unread states, source links and remarks in the existing inbox, plus explicit page/link read-later and selected-text excerpt capture without content scripts or broader permissions.
+- Collapsed desktop access to local saved browser windows, named saves and non-destructive new-window restoration, reusing the existing twenty-session store and serialized background writes.
+
+### Changed
+
+- Preserve reading excerpts, remarks and source URLs when organizing into an existing website category; re-adding a read source returns it to unread without duplicating the record.
+- Validate normal URLs and local session records; show partial restore outcomes and storage/permission failures. Development fixtures and tests use synthetic data and do not claim real Chrome extension authorization/restore verification.
+
+## [0.4.11] - 2026-10-23
+
+### Fixed
+
+- Fixed toolbar popup shrinkage by sizing the root and body to 420px without viewport-relative width caps; kept the brand mark, title, and desktop link from collapsing and constrained long content to vertical scrolling within 600px.
+- Added layout contract tests for intrinsic width, fixed header items, and scrolling limits.
+
+## [0.4.10] - 2026-10-23
+
+### Added
+
+- Direct bookmark-folder import into a selected desktop category, with folder-preserving mode and duplicate/unsupported/overflow previews.
+- Native page/link context-menu capture with remembered destinations and toolbar feedback; Chrome/Edge 116+ and the `contextMenus` permission are required.
+
+### Changed
+
+- Prioritized page capture and native bookmark import in the popup; window groups, sessions, and export are progressively disclosed.
+- Serialized background capture writes, opened a background desktop when needed, waited for initial cloud reconciliation, and acknowledged captures only after local persistence.
+- Avoided quadratic duplicate checks when applying large bookmark batches; pending queue overflow is rejected without dropping older captures.
 
 ## [0.4.4] - 2026-10-17
 

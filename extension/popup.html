@@ -8,31 +8,43 @@
   </head>
   <body>
     <main>
-      <header><span class="mark">W</span><span><strong>收藏到微言桌面</strong><small>WyanDesk</small></span></header>
+      <header><span class="mark">W</span><span><strong>收藏到微言桌面</strong><small>WyanDesk</small></span><a id="openDesktop" href="app/index.html" target="_blank" rel="noopener">打开桌面</a></header>
       <section class="destination">
         <label><span>桌面</span><select id="workspace"></select></label>
-        <label><span>分类</span><select id="category"></select></label>
+        <label><span>目标分组（分类）</span><select id="category"></select></label>
       </section>
+      <p id="status" role="status" aria-live="polite">正在读取桌面分组…</p>
       <section class="capture-box" aria-labelledby="capture-title">
-        <div class="section-heading"><span><strong id="capture-title">当前网页</strong><small>只读取标题和网址</small></span></div>
-        <div class="capture-kinds" role="group" aria-label="保存类型"><button class="active" data-capture-kind="link" type="button">网站</button><button data-capture-kind="task" type="button">任务</button><button data-capture-kind="note" type="button">便签</button></div>
+        <div class="section-heading"><span><strong id="capture-title">当前网页</strong><small id="currentPage">只读取标题和网址</small></span></div>
+        <div class="capture-kinds" role="group" aria-label="保存类型"><button class="active" data-capture-kind="link" type="button">网站</button><button data-capture-kind="reading" type="button">稍后读</button><button data-capture-kind="task" type="button">任务</button><button data-capture-kind="note" type="button">便签</button></div>
         <button class="primary" id="savePage" type="button"><span>＋</span><span><strong id="save-page-label">收藏当前网页</strong><small id="save-page-note">加入当前桌面分类</small></span></button>
+        <p class="hint">也可在网页或链接上右键 → 收藏到微言桌面。</p>
       </section>
-      <div class="group-box">
-        <label><span>会话名称</span><input id="groupTitle" maxlength="30" placeholder="例如：本周研究资料" /></label>
-        <button class="secondary" id="saveWindow" type="button"><span>▦</span><span><strong>暂存当前窗口</strong><small>保留顺序与固定状态，同时创建网站组合</small></span></button>
-        <div id="session-list" class="session-list"></div>
-      </div>
       <section class="bookmark-box" aria-labelledby="bookmark-title">
-        <div class="section-heading"><span><strong id="bookmark-title">浏览器书签迁移</strong><small>保留文件夹分类，不覆盖原内容</small></span><span class="permission-chip">按需授权</span></div>
-        <div class="bookmark-actions">
-          <button class="compact" id="importBookmarks" type="button"><span>↓</span><span><strong>导入浏览器书签</strong><small>加入当前桌面</small></span></button>
-          <button class="compact" id="exportBookmarks" type="button"><span>↑</span><span><strong>导出当前桌面</strong><small>写入浏览器书签</small></span></button>
+        <div class="section-heading"><span><strong id="bookmark-title">导入浏览器书签</strong><small>直接读取，无需导出 HTML 文件</small></span></div>
+        <button class="secondary" id="loadBookmarks" type="button"><span aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h6l2 2h8v12H4z"/></svg></span><span><strong>选择浏览器书签</strong><small>首次使用时申请书签权限</small></span></button>
+        <div id="bookmarkOptions" hidden>
+          <label><span>书签来源</span><select id="bookmarkFolder"></select></label>
+          <label><span>导入方式</span><select id="bookmarkMode"><option value="category">全部放入上方目标分组</option><option value="folders">保留原文件夹，建立对应分类</option></select></label>
+          <p id="bookmarkPreview" class="hint" aria-live="polite"></p>
+          <button class="secondary" id="importBookmarks" type="button"><span aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3v12m-4-4 4 4 4-4M4 16v4h16v-4"/></svg></span><span><strong id="importBookmarksLabel">导入到目标分组</strong><small>自动去重，不改动浏览器原书签</small></span></button>
         </div>
       </section>
-      <p id="status" role="status">收藏后会自动出现在下一个微言桌面标签页。</p>
+      <details class="group-box">
+        <summary>窗口、网站组合与更多</summary>
+        <div class="section-heading"><span><strong id="window-group-title">当前窗口</strong><small>批量收藏到组合，或打开已有组合</small></span><span class="permission-chip">按需授权</span></div>
+        <label><span>目标组合</span><select id="shortcutGroup"></select></label>
+        <label id="newGroupTitleField"><span>新组合名称</span><input id="groupTitle" maxlength="30" placeholder="例如：本周研究资料" /></label>
+        <button class="secondary" id="saveWindow" type="button"><span aria-hidden="true">▦</span><span><strong id="save-window-label">创建网站组合</strong><small id="save-window-note">保存当前窗口的全部网页</small></span></button>
+        <button class="secondary group-open" id="openGroup" type="button" hidden>
+          <span class="action-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M8 5h9a2 2 0 0 1 2 2v9"/><path d="m12 12 7-7"/><path d="M19 12v5a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/></svg></span>
+          <span><strong>打开该组合</strong><small id="open-group-note">在当前窗口新建标签页</small></span>
+        </button>
+        <div id="session-list" class="session-list"></div>
+        <button class="secondary" id="exportBookmarks" type="button"><span aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 16V4m-4 4 4-4 4 4M4 16v4h16v-4"/></svg></span><span><strong>导出桌面到浏览器书签</strong><small>建立独立文件夹，不覆盖原书签</small></span></button>
+      </details>
       <footer>标签页与书签权限都只在点击对应功能时申请</footer>
     </main>
-    <script src="popup.js"></script>
+    <script type="module" src="popup.js"></script>
   </body>
 </html>

@@ -8,6 +8,7 @@ import { normalizeWorldClockZones } from './worldClock';
 import { clearLocalClipboardItems } from './localClipboard';
 import { clearWeatherWidgetState } from './weather';
 import { normalizeQuickActionIds } from './quickActions';
+import { normalizeInboxItems } from './readingList';
 
 const STORAGE_KEY = 'wyandesk.state.v1';
 const RECOVERY_KEY = 'wyandesk.state.recovery.v1';
@@ -153,16 +154,7 @@ export function migrateDeskState(value: unknown): DeskState {
     : workspaces[0].id;
   const preferences = saved.preferences && typeof saved.preferences === 'object' ? saved.preferences : {};
   const legacy = (saved.version || 0) < 6;
-  const inbox: DeskInboxItem[] = Array.isArray(saved.inbox)
-    ? saved.inbox.flatMap((value) => {
-      if (!value || typeof value !== 'object') return [];
-      const item = value as Partial<DeskInboxItem>;
-      const kind = item.kind === 'link' || item.kind === 'task' || item.kind === 'note' ? item.kind : null;
-      const content = typeof item.content === 'string' ? item.content.trim().slice(0, 500) : '';
-      if (!kind || !content || typeof item.id !== 'string') return [];
-      return [{ id: item.id, kind, content, url: typeof item.url === 'string' ? item.url : undefined, createdAt: typeof item.createdAt === 'string' ? item.createdAt : new Date().toISOString() }];
-    })
-    : [];
+  const inbox: DeskInboxItem[] = normalizeInboxItems(saved.inbox);
   return {
     version: 8,
     activeWorkspaceId,

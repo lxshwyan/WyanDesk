@@ -1,11 +1,12 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { Check, ExternalLink, FolderInput, Pencil, Trash2 } from 'lucide-react';
-import type { Shortcut } from '../types';
+import { Check, ExternalLink, FolderInput, FolderOpen, Pencil, Plus, Trash2 } from 'lucide-react';
+import type { Shortcut, ShortcutGroup } from '../types';
 
 interface ShortcutContextMenuProps {
   shortcut: Shortcut;
   categories: string[];
+  groups: ShortcutGroup[];
   x: number;
   y: number;
   onClose: () => void;
@@ -13,11 +14,13 @@ interface ShortcutContextMenuProps {
   onEdit: (shortcut: Shortcut) => void;
   onMove: (shortcut: Shortcut, category: string) => void;
   onOpen: (shortcut: Shortcut) => void;
+  onManageGroups: () => void;
+  onToggleGroup: (shortcut: Shortcut, group: ShortcutGroup) => void;
 }
 
 const viewportInset = 10;
 
-export function ShortcutContextMenu({ shortcut, categories, x, y, onClose, onDelete, onEdit, onMove, onOpen }: ShortcutContextMenuProps) {
+export function ShortcutContextMenu({ shortcut, categories, groups, x, y, onClose, onDelete, onEdit, onMove, onOpen, onManageGroups, onToggleGroup }: ShortcutContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState<{ left: number; top: number } | null>(null);
 
@@ -29,7 +32,7 @@ export function ShortcutContextMenu({ shortcut, categories, x, y, onClose, onDel
       left: Math.max(viewportInset, Math.min(x, window.innerWidth - bounds.width - viewportInset)),
       top: Math.max(viewportInset, Math.min(y, window.innerHeight - bounds.height - viewportInset)),
     });
-  }, [categories.length, x, y]);
+  }, [categories.length, groups.length, x, y]);
 
   useEffect(() => {
     const menu = menuRef.current;
@@ -66,7 +69,7 @@ export function ShortcutContextMenu({ shortcut, categories, x, y, onClose, onDel
       return;
     }
     if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
-    const items = [...(menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]:not(:disabled), [role="menuitemradio"]:not(:disabled)') || [])];
+    const items = [...(menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]:not(:disabled), [role="menuitemradio"]:not(:disabled), [role="menuitemcheckbox"]:not(:disabled)') || [])];
     if (!items.length) return;
     const currentIndex = items.indexOf(document.activeElement as HTMLButtonElement);
     const nextIndex = event.key === 'Home'
@@ -107,6 +110,22 @@ export function ShortcutContextMenu({ shortcut, categories, x, y, onClose, onDel
           );
         })}
       </div>
+      <div className="shortcut-context-divider" role="separator" />
+      <p className="shortcut-context-label"><FolderOpen aria-hidden="true" />网站组合</p>
+      {groups.length > 0 ? (
+        <div className="shortcut-context-groups" role="group" aria-label="选择网站组合">
+          {groups.map((group) => {
+            const selected = group.shortcutIds.includes(shortcut.id);
+            return (
+              <button key={group.id} type="button" role="menuitemcheckbox" aria-checked={selected} onClick={() => onToggleGroup(shortcut, group)}>
+                <span>{group.title}</span>{selected && <Check aria-hidden="true" />}
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        <button type="button" role="menuitem" onClick={() => { onClose(); onManageGroups(); }}><Plus aria-hidden="true" />新建网站组合</button>
+      )}
       <div className="shortcut-context-divider" role="separator" />
       <button className="danger" type="button" role="menuitem" onClick={() => { onClose(); onDelete(shortcut); }}><Trash2 aria-hidden="true" />删除网站</button>
     </div>,

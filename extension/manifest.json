@@ -1,10 +1,13 @@
 {
   "manifest_version": 3,
+  "minimum_chrome_version": "116",
   "name": "微言桌面 WyanDesk",
-  "version": "0.3.2",
-  "description": "把微言桌面设为新标签页，并快速收藏当前网页或窗口标签组。",
-  "permissions": ["activeTab", "storage"],
+  "version": "0.5.0",
+  "description": "把微言桌面设为新标签页，快速收藏网页，并将当前窗口批量整理到网站组合。",
+  "permissions": ["activeTab", "storage", "identity", "contextMenus"],
+  "background": { "service_worker": "background.js", "type": "module" },
   "optional_permissions": ["tabs", "bookmarks"],
+  "host_permissions": ["https://wyanhub.com/*", "https://desk.wyanhub.com/*"],
   "action": {
     "default_title": "收藏到微言桌面",
     "default_popup": "popup.html"

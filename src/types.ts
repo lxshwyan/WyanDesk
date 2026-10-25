@@ -46,6 +46,9 @@ export interface DeskInboxItem {
   content: string;
   url?: string;
   createdAt: string;
+  readAt?: string;
+  excerpt?: string;
+  note?: string;
 }
 
 export interface ShortcutGroup {
