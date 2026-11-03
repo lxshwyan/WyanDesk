@@ -10,7 +10,7 @@ A local-first browser desktop for websites, tasks, schedules, notes and focus se
 
 The public frontend is **0.12.2**, matching the application version of the official website and manual extension ZIP. This repository contains the standalone React app, PWA and Chrome/Edge Manifest V3 extension under the MIT license. GitHub hosts development, issues and pull requests; Gitee mirrors the source for access in China.
 
-The Edge store package is **0.12.2.1**, with a fourth component for store packaging revisions. It was submitted on **November 2, 2026**, with status **In review** at that time. This dated record does not claim certification has passed. The adapter changes manifest metadata and adds Simplified Chinese messages while preserving every runtime file from the 0.12.2 ZIP.
+The Edge store package **0.12.2.1** is published. On **November 3, 2026**, Partner Center showed **Live**, and the public listing displayed the same version. [Install from Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/cfccieknfkfiijjdhjiinlgdjjgbaecl). The fourth component is a store packaging revision; all runtime files match the 0.12.2 manual ZIP.
 
 The main branch, GitHub Releases and the extension store are maintained separately. Use the current ZIP links below; [Releases](https://github.com/lxshwyan/WyanDesk/releases) retains historical downloads. See [CHANGELOG](CHANGELOG.md).
 
@@ -54,7 +54,9 @@ The source extension manifest is a template. The build injects the version from 
 
 ## Install or update the extension
 
-Current manual package: **0.12.2**.
+Edge users can [install the store version](https://microsoftedge.microsoft.com/addons/detail/cfccieknfkfiijjdhjiinlgdjjgbaecl) and receive future certified updates through Edge. Before migrating a manual installation, export desktop JSON, import it into the store version and keep the original data.
+
+Current manual package for Chrome or unpacked installations: **0.12.2**.
 
 - [Official ZIP](https://desk.wyanhub.com/downloads/wyandesk-extension.zip) · [SHA-256](https://desk.wyanhub.com/downloads/wyandesk-extension.zip.sha256)
 - [Repository ZIP](public/downloads/wyandesk-extension.zip) · [Repository checksum](public/downloads/wyandesk-extension.zip.sha256)

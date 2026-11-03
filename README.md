@@ -10,7 +10,7 @@
 
 当前公开源码为 **0.12.2**，与官网及官网手动安装扩展的应用版本一致。本仓库提供可独立构建的 React、PWA 与 Chrome / Edge Manifest V3 扩展前端，采用 MIT 许可。GitHub 为主仓库，Gitee 为国内镜像；开发、Issue 和 Pull Request 以 GitHub 为准。
 
-Edge 商店包为 **0.12.2.1**，第四段是商店打包修订。2026 年 11 月 2 日已提交微软审核，当时状态为 **In review**；这是有日期的提交记录，不代表已正式上架。商店包只修改清单并新增简体中文语言消息，运行时文件与 0.12.2 手动安装包一致。
+Edge 商店包 **0.12.2.1** 已正式上架，2026 年 11 月 3 日核对微软后台为 **Live**，公开页面显示相同版本。[从 Microsoft Edge 商店安装](https://microsoftedge.microsoft.com/addons/detail/cfccieknfkfiijjdhjiinlgdjjgbaecl)。第四段是商店打包修订，运行时文件与 0.12.2 手动安装包一致。
 
 主分支、GitHub Release 和扩展商店分别维护。最新手动安装包见下方入口，[Releases](https://github.com/lxshwyan/WyanDesk/releases) 保留历史版本。版本说明见 [CHANGELOG](CHANGELOG.md)。
 
@@ -54,7 +54,9 @@ npm run package:edge-store  # 从校验后的 ZIP 生成独立商店包
 
 ## 安装或更新扩展
 
-当前手动安装包 **0.12.2**：
+Edge 用户推荐[安装商店版](https://microsoftedge.microsoft.com/addons/detail/cfccieknfkfiijjdhjiinlgdjjgbaecl)，后续通过 Edge 接收已审核发布的更新。已有手动安装版迁移前先导出桌面 JSON，再在商店版导入并保留原数据。
+
+Chrome 或手动安装用户仍可使用 **0.12.2** ZIP：
 
 - [官网下载 ZIP](https://desk.wyanhub.com/downloads/wyandesk-extension.zip) · [官网 SHA-256](https://desk.wyanhub.com/downloads/wyandesk-extension.zip.sha256)
 - [仓库内 ZIP](public/downloads/wyandesk-extension.zip) · [仓库内 SHA-256](public/downloads/wyandesk-extension.zip.sha256)

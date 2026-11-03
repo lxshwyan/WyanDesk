@@ -4,6 +4,10 @@ All notable changes to WyanDesk are documented here.
 
 ## [0.12.2] - 2026-11-02
 
+### Microsoft Edge Add-ons — 2026-11-03
+
+- Verify store package 0.12.2.1 as Live in Partner Center and available on the [public store page](https://microsoftedge.microsoft.com/addons/detail/cfccieknfkfiijjdhjiinlgdjjgbaecl). Add direct installation links to the bilingual guides and explain JSON migration from manual installations.
+
 ### Public distribution — 2026-11-03
 
 - Synchronize the standalone public frontend from 0.6.2 to 0.12.2, including the official manual extension ZIP and checksum, current privacy notes, bilingual documentation and an actual isolated-extension screenshot.
