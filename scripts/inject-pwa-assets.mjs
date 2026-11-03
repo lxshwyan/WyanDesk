@@ -17,7 +17,8 @@ async function walk(directory) {
   return files.flat();
 }
 
-const assets = (await walk(assetsDir))
+const assets = [...await walk(assetsDir), ...await walk(join(distDir, 'site-icons')), ...await walk(join(distDir, 'wallpapers'))]
+  .filter((path) => !path.endsWith('SOURCES.json'))
   .filter((path) => !path.endsWith('.map'))
   .map((path) => `/${relative(distDir, path).replaceAll('\\', '/')}`)
   .sort();

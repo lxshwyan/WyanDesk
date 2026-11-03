@@ -1,4 +1,5 @@
-import { useState, type FormEvent } from 'react';
+import { useWidgetViewState } from './WidgetViewState';
+import { type FormEvent } from 'react';
 import { Clipboard, ClipboardPaste, Copy, Plus, Trash2 } from 'lucide-react';
 import { addLocalClipboardItem, formatLocalClipboardTime, readLocalClipboardItems, writeLocalClipboardItems, type LocalClipboardItem } from '../lib/localClipboard';
 
@@ -8,10 +9,10 @@ interface ClipboardCardProps {
 }
 
 export function ClipboardCard({ now, limit }: ClipboardCardProps) {
-  const [items, setItems] = useState(readLocalClipboardItems);
-  const [draft, setDraft] = useState('');
-  const [status, setStatus] = useState('');
-  const [error, setError] = useState('');
+  const [items, setItems] = useWidgetViewState('items', readLocalClipboardItems);
+  const [draft, setDraft] = useWidgetViewState('draft', '');
+  const [status, setStatus] = useWidgetViewState('status', '');
+  const [error, setError] = useWidgetViewState('error', '');
 
   function persist(next: LocalClipboardItem[]) {
     setItems(next);

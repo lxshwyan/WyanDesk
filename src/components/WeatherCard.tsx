@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { WidgetPreviewContext, useWidgetViewState } from './WidgetViewState';
+import { useContext, useEffect, useRef, type FormEvent } from 'react';
 import { Cloud, CloudFog, CloudLightning, CloudRain, CloudSun, MapPin, RefreshCw, Search, Snowflake, Sun } from 'lucide-react';
 import {
   fetchWeatherSnapshot,
@@ -23,13 +24,14 @@ function WeatherIcon({ code, isDay }: { code: number; isDay: boolean }) {
 }
 
 export function WeatherCard() {
-  const [stored, setStored] = useState(readWeatherWidgetState);
-  const [configuring, setConfiguring] = useState(() => !stored.location);
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState<WeatherLocation[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [searching, setSearching] = useState(false);
-  const [error, setError] = useState('');
+  const preview = useContext(WidgetPreviewContext);
+  const [stored, setStored] = useWidgetViewState('stored', readWeatherWidgetState);
+  const [configuring, setConfiguring] = useWidgetViewState('configuring', () => !stored.location);
+  const [query, setQuery] = useWidgetViewState('query', '');
+  const [results, setResults] = useWidgetViewState<WeatherLocation[]>('results', []);
+  const [loading, setLoading] = useWidgetViewState('loading', false);
+  const [searching, setSearching] = useWidgetViewState('searching', false);
+  const [error, setError] = useWidgetViewState('error', '');
   const weatherAbortRef = useRef<AbortController | null>(null);
   const searchAbortRef = useRef<AbortController | null>(null);
   const locationKey = stored.location ? `${stored.location.latitude},${stored.location.longitude}` : '';
@@ -56,12 +58,12 @@ export function WeatherCard() {
   }
 
   useEffect(() => {
-    if (!stored.location || weatherCacheIsFresh(stored.snapshot)) return;
+    if (preview || !stored.location || weatherCacheIsFresh(stored.snapshot)) return;
     void loadWeather(stored.location);
     return () => weatherAbortRef.current?.abort();
     // The location key and cache timestamp are the only values that should trigger a network refresh.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [locationKey, stored.snapshot?.fetchedAt]);
+  }, [preview, locationKey, stored.snapshot?.fetchedAt]);
 
   useEffect(() => () => {
     weatherAbortRef.current?.abort();

@@ -10,6 +10,66 @@ function jsonResponse(value: unknown, status = 200): Response {
 }
 
 describe('assistant transport', () => {
+  it('uses the signed-in extension transport for config, answers and feedback', async () => {
+    vi.stubGlobal('location', { protocol: 'chrome-extension:' });
+    const removeCredential = vi.fn();
+    vi.stubGlobal('chrome', { storage: { local: {
+      get: vi.fn().mockResolvedValue({ 'wyandesk.extension.auth.v1': {
+        version: 1, accessToken: 'wyandesk_test-token',
+        expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
+        user: { workspaceId: 'wyanhub', userId: 'user-1', userName: 'Test' },
+      } }),
+      remove: removeCredential,
+    } } });
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({ enabled: true, mode: 'knowledge', models: [], allowModelSelection: false,
+        suggestions: [], maxQuestionChars: 600, privacyNotice: '不读桌面', knowledgeVersion: 'test' }))
+      .mockResolvedValueOnce(jsonResponse({ answer: '已连接', sources: [], mode: 'knowledge', knowledgeVersion: 'test', requestId: 'request-1' }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    vi.stubGlobal('fetch', fetchMock);
+    const controller = new AbortController();
+
+    await fetchAssistantConfig(controller.signal);
+    await queryAssistant('如何添加网站？', [], 'auto', 'off', controller.signal);
+    await submitAssistantFeedback('request-1', 'helpful', controller.signal);
+
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+      'https://desk.wyanhub.com/api/desk/assistant/config',
+      'https://desk.wyanhub.com/api/desk/assistant/query',
+      'https://desk.wyanhub.com/api/desk/assistant/feedback',
+    ]);
+    for (const [, request] of fetchMock.mock.calls as [string, RequestInit][]) {
+      const headers = new Headers(request.headers);
+      expect(request.credentials).toBe('omit');
+      expect(request.redirect).toBe('manual');
+      expect(request.signal).toBe(controller.signal);
+      expect(headers.get('Authorization')).toBe('Bearer wyandesk_test-token');
+      expect(headers.get('X-Wyan-Assistant-Client')).toMatch(/^[A-Za-z0-9._-]{16,96}$/);
+    }
+    expect(removeCredential).not.toHaveBeenCalled();
+  });
+
+  it('clears an expired extension session and reports a login error', async () => {
+    vi.stubGlobal('location', { protocol: 'chrome-extension:' });
+    const removeCredential = vi.fn();
+    vi.stubGlobal('chrome', { storage: { local: { get: vi.fn().mockResolvedValue({}), remove: removeCredential } } });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 401 })));
+
+    await expect(fetchAssistantConfig()).rejects.toMatchObject({ code: 'auth_required', status: 401 });
+    expect(removeCredential).toHaveBeenCalledWith('wyandesk.extension.auth.v1');
+  });
+
+  it('explains network failures and preserves explicit cancellation without retrying a question', async () => {
+    const request = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'));
+    vi.stubGlobal('fetch', request);
+    await expect(fetchAssistantConfig()).rejects.toMatchObject({ code: 'network_error', message: '无法连接助手，请检查网络后重新连接' });
+    await expect(queryAssistant('如何添加网站？', [], 'auto', 'off')).rejects.toMatchObject({ code: 'network_error' });
+    expect(request).toHaveBeenCalledTimes(2);
+    const cancelled = new DOMException('Cancelled', 'AbortError');
+    request.mockRejectedValueOnce(cancelled);
+    await expect(fetchAssistantConfig()).rejects.toBe(cancelled);
+  });
+
   it('accepts only verified WyanHub source links', () => {
     expect(safeAssistantSourceURL('https://forms.wyanhub.com/path')).toBe('https://forms.wyanhub.com/path');
     expect(safeAssistantSourceURL('https://wyanhub.com')).toBe('https://wyanhub.com/');

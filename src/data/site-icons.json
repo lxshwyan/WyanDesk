@@ -1,0 +1,347 @@
+[
+  {
+    "id": "baidu",
+    "host": "www.baidu.com",
+    "icon": "百",
+    "path": "/site-icons/baidu.ico",
+    "source": "https://www.baidu.com/favicon.ico",
+    "sha256": "c70088079fe9441a726c66ce0e73ae38315ec80051d3dd542c41b82fa0a1993a"
+  },
+  {
+    "id": "bing",
+    "host": "cn.bing.com",
+    "icon": "B",
+    "path": "/site-icons/bing.ico",
+    "source": "https://cn.bing.com/favicon.ico",
+    "sha256": "5b2c34b3c4e8dd898b664dba6c3786e2ff9869eff55d673aa48361f11325ed07"
+  },
+  {
+    "id": "mail-163",
+    "host": "mail.163.com",
+    "icon": "邮",
+    "path": "/site-icons/mail-163.png",
+    "source": "https://mail.163.com/favicon.ico",
+    "sha256": "aaa1bc04a6989c7bd8163fd163cfbdf986d9c04758b841d97d3081314a2fc50c"
+  },
+  {
+    "id": "bilibili",
+    "host": "www.bilibili.com",
+    "icon": "哔",
+    "path": "/site-icons/bilibili.ico",
+    "source": "https://www.bilibili.com/favicon.ico",
+    "sha256": "2681561eb24e7435fea1acf26f3af95e4efc9f7d451587b58bef62f030f337e9"
+  },
+  {
+    "id": "zhihu",
+    "host": "www.zhihu.com",
+    "icon": "知",
+    "path": "/site-icons/zhihu.ico",
+    "source": "https://www.zhihu.com/favicon.ico",
+    "sha256": "ca501e1d6c35f64b94d78bbabad986fe888d6aab08702a0083ba88076ad60f37"
+  },
+  {
+    "id": "wyanhub",
+    "host": "wyanhub.com",
+    "icon": "W",
+    "path": "/pwa-192.png",
+    "source": "WyanDesk existing brand asset"
+  },
+  {
+    "id": "wyan-tools",
+    "host": "tools.wyanhub.com",
+    "icon": "具",
+    "path": "/pwa-192.png",
+    "source": "WyanDesk existing brand asset"
+  },
+  {
+    "id": "wyan-forms",
+    "host": "forms.wyanhub.com",
+    "icon": "表",
+    "path": "/pwa-192.png",
+    "source": "WyanDesk existing brand asset"
+  },
+  {
+    "id": "wyan-events",
+    "host": "events.wyanhub.com",
+    "icon": "活",
+    "path": "/pwa-192.png",
+    "source": "WyanDesk existing brand asset"
+  },
+  {
+    "id": "wyan-collect",
+    "host": "collect.wyanhub.com",
+    "icon": "收",
+    "path": "/pwa-192.png",
+    "source": "WyanDesk existing brand asset"
+  },
+  {
+    "id": "wyan-booking",
+    "host": "booking.wyanhub.com",
+    "icon": "约",
+    "path": "/pwa-192.png",
+    "source": "WyanDesk existing brand asset"
+  },
+  {
+    "id": "wyan-survey",
+    "host": "survey.wyanhub.com",
+    "icon": "问",
+    "path": "/pwa-192.png",
+    "source": "WyanDesk existing brand asset"
+  },
+  {
+    "id": "kimi",
+    "host": "www.kimi.com",
+    "icon": "K",
+    "path": "/site-icons/kimi.ico",
+    "source": "https://www.kimi.com/favicon.ico",
+    "sha256": "df91c1ecf1d4894cf05845cdce44549ed3ccca3478b97a70972d1bc82ac4f2d1"
+  },
+  {
+    "id": "tencent-docs",
+    "host": "docs.qq.com",
+    "icon": "文",
+    "path": "/site-icons/tencent-docs.ico",
+    "source": "https://docs.idqqimg.com/tim/docs/desktop/favicon.ico",
+    "sha256": "a41f0618d62d19d7907e4976a96985c6dd459984545db5924524b4e2f1e5ff44"
+  },
+  {
+    "id": "feishu",
+    "host": "www.feishu.cn",
+    "icon": "飞",
+    "path": "/site-icons/feishu.ico",
+    "source": "https://www.feishu.cn/favicon.ico",
+    "sha256": "69da9be6053530750202e4f674d621274bd86a9fc23f44a16c5e6c7aa56dfd9e"
+  },
+  {
+    "id": "dingtalk",
+    "host": "www.dingtalk.com",
+    "icon": "钉",
+    "path": "/site-icons/dingtalk.ico",
+    "source": "https://www.dingtalk.com/favicon.ico",
+    "sha256": "12a8e74153c9331dfb091e086a88a20f8b417399d86adf5d18202b095e4d15b5"
+  },
+  {
+    "id": "shimo",
+    "host": "shimo.im",
+    "icon": "石",
+    "path": "/site-icons/shimo.ico",
+    "source": "https://shimo.im/favicon.ico",
+    "sha256": "89dc2a1291757c58958e2edd42aba090fdeb83d9ebffcd1228c71fc6eb9e390d"
+  },
+  {
+    "id": "wps",
+    "host": "www.wps.cn",
+    "icon": "W",
+    "path": "/site-icons/wps.ico",
+    "source": "https://www.wps.cn/favicon.ico",
+    "sha256": "4fb684e63524072d2ce344fd56ecbdd8f402d669dc71e92d6389221473c32afa"
+  },
+  {
+    "id": "qq-mail",
+    "host": "mail.qq.com",
+    "icon": "Q",
+    "path": "/site-icons/qq-mail.ico",
+    "source": "https://mail.qq.com/favicon.ico",
+    "sha256": "0f245981be19a707f4f0ef29d59b1d0b694d8d94ee3872d17e118766b1d4ab7f"
+  },
+  {
+    "id": "wecom",
+    "host": "work.weixin.qq.com",
+    "icon": "企",
+    "path": "/site-icons/wecom.ico",
+    "source": "https://work.weixin.qq.com/favicon.ico",
+    "sha256": "b11c0e4016a8e04ee32a85a638e23126cd6434dd9e4dc6b762aca3a61951a9d0"
+  },
+  {
+    "id": "tencent-meeting",
+    "host": "meeting.tencent.com",
+    "icon": "会",
+    "path": "/site-icons/tencent-meeting.ico",
+    "source": "https://meeting.tencent.com/favicon.ico",
+    "sha256": "9fd53bcee529f2fca9a6e404cece0e6a9c85ec3e2ef56acbd5e615602d05711f"
+  },
+  {
+    "id": "zoom",
+    "host": "zoom.us",
+    "icon": "Z",
+    "path": "/site-icons/zoom.ico",
+    "source": "https://zoom.us/favicon.ico",
+    "sha256": "58b6fee1a883d9b798dea9dbf8f262fb8875e035bfa571792b8967c4c0434d26"
+  },
+  {
+    "id": "aliyun-drive",
+    "host": "www.alipan.com",
+    "icon": "阿",
+    "path": "/site-icons/aliyun-drive.ico",
+    "source": "https://www.alipan.com/favicon.ico",
+    "sha256": "09eed136b7ea1581b7672c5425058650e939f88d24e0f3df7681729cce1ddd2d"
+  },
+  {
+    "id": "baidu-pan",
+    "host": "pan.baidu.com",
+    "icon": "盘",
+    "path": "/site-icons/baidu-pan.ico",
+    "source": "https://nd-static.bdstatic.com/m-static/wp-brand/favicon.ico",
+    "sha256": "7e352d358af25cacc5bf410c4a9de04056967b83e3fb8defec30d694129cefb3"
+  },
+  {
+    "id": "quark-drive",
+    "host": "pan.quark.cn",
+    "icon": "夸",
+    "path": "/site-icons/quark-drive.ico",
+    "source": "https://pan.quark.cn/favicon.ico",
+    "sha256": "89935c7af5ab9465186fe0aab2f02cce43fb8fa9af8aa7b16880ef3f593867b0"
+  },
+  {
+    "id": "github",
+    "host": "github.com",
+    "icon": "GH",
+    "path": "/site-icons/github.ico",
+    "source": "https://github.com/favicon.ico",
+    "sha256": "2ee43237d196100210f1786e7b73b57cd140f6013c072c70dbdffd9e9bc695f8"
+  },
+  {
+    "id": "gitee",
+    "host": "gitee.com",
+    "icon": "G",
+    "path": "/site-icons/gitee.ico",
+    "source": "https://gitee.com/favicon.ico",
+    "sha256": "2d1a42d094476e3c893e430032d5371a40af1cc2a025e089383a94bf992c671e"
+  },
+  {
+    "id": "mdn",
+    "host": "developer.mozilla.org",
+    "icon": "M",
+    "path": "/site-icons/mdn.png",
+    "source": "https://developer.mozilla.org/favicon.ico",
+    "sha256": "5a777406a4082a0ae81a657e47cbea57db8d0700ef73106b43c85738b38578a6"
+  },
+  {
+    "id": "stackoverflow",
+    "host": "stackoverflow.com",
+    "icon": "SO",
+    "path": "/site-icons/stackoverflow.ico",
+    "source": "https://stackoverflow.com/favicon.ico",
+    "sha256": "1fb72fef0a0698fda92fafe9dd1e3dce35fb7eb7151dfaf6977fa5a3770b1bb8"
+  },
+  {
+    "id": "docker",
+    "host": "hub.docker.com",
+    "icon": "D",
+    "path": "/site-icons/docker.png",
+    "source": "https://hub.docker.com/favicon.ico",
+    "sha256": "2d0ac2506e1df28bf8a08fdbd767416d320b1bc91c09587b95a669bb9e53e169"
+  },
+  {
+    "id": "figma",
+    "host": "www.figma.com",
+    "icon": "F",
+    "path": "/site-icons/figma.ico",
+    "source": "https://www.figma.com/favicon.ico",
+    "sha256": "4d654c2215e4221dae039969441be0c739df6ec6f7ccf469b2580af54b5c7c2d"
+  },
+  {
+    "id": "canva",
+    "host": "www.canva.cn",
+    "icon": "C",
+    "path": "/site-icons/canva.ico",
+    "source": "https://www.canva.cn/favicon.ico",
+    "sha256": "ec2fbad47e598fe06c7a2b825224b3b1b8d8221f3002e6370e627d459ff0634a"
+  },
+  {
+    "id": "iconfont",
+    "host": "www.iconfont.cn",
+    "icon": "i",
+    "path": "/site-icons/iconfont.svg",
+    "source": "https://www.iconfont.cn/favicon.ico",
+    "sha256": "0972f73e5b58b01255d70ab0f408e25befb7ec5de429f55cb3a4d979468992fb"
+  },
+  {
+    "id": "unsplash",
+    "host": "unsplash.com",
+    "icon": "U",
+    "path": "/site-icons/unsplash.ico",
+    "source": "https://unsplash.com/favicon.ico",
+    "sha256": "920e3132716dc26b8eaef60d8383bc2dde094bf7642b34abe7b9fa41c6dc0c83"
+  },
+  {
+    "id": "mooc",
+    "host": "www.icourse163.org",
+    "icon": "M",
+    "path": "/site-icons/mooc.png",
+    "source": "https://edu-image.nosdn.127.net/32a8dd2a-b9aa-4ec9-abd5-66cd8751befb.png?imageView&quality=100",
+    "sha256": "4d3412310b8673fce11e81ba872f3ff2e0805c1953cf7ee98c7330c87d39d769"
+  },
+  {
+    "id": "wikipedia",
+    "host": "zh.wikipedia.org",
+    "icon": "W",
+    "path": "/site-icons/wikipedia.ico",
+    "source": "https://zh.wikipedia.org/favicon.ico",
+    "sha256": "3638de61226857e62cf5187d7d59cf902111ad4f792b5bdff1bfed3f5ed5e608"
+  },
+  {
+    "id": "scholar",
+    "host": "scholar.google.com",
+    "icon": "G",
+    "path": "/site-icons/scholar.ico",
+    "source": "https://scholar.google.com/favicon.ico",
+    "sha256": "8dac42076bd03098a771ac315fa277e0b70fa3030cc708554d74ed506fa3c2de"
+  },
+  {
+    "id": "weread",
+    "host": "weread.qq.com",
+    "icon": "读",
+    "path": "/site-icons/weread.ico",
+    "source": "https://weread.qq.com/favicon.ico",
+    "sha256": "fdc3f6f96927eb693baedff187ff2940d043683e078321c8b4006eed6f39bede"
+  },
+  {
+    "id": "taobao",
+    "host": "www.taobao.com",
+    "icon": "淘",
+    "path": "/site-icons/taobao.ico",
+    "source": "https://www.taobao.com/favicon.ico",
+    "sha256": "705c7072059cbf59389d20029a0edf33c1dd6b54c9063025da871fc9a42cac8e"
+  },
+  {
+    "id": "jd",
+    "host": "www.jd.com",
+    "icon": "京",
+    "path": "/site-icons/jd.ico",
+    "source": "https://www.jd.com/favicon.ico",
+    "sha256": "99adfd5e001df9645a32518bafaedfff7746575bf239e1fe9a236ea9f94ed0d4"
+  },
+  {
+    "id": "amap",
+    "host": "www.amap.com",
+    "icon": "高",
+    "path": "/site-icons/amap.ico",
+    "source": "https://www.amap.com/favicon.ico",
+    "sha256": "d219abdca9f32fbe1b2bf870ee38860efc7307c35863f344e88c120ad54f53cd"
+  },
+  {
+    "id": "douban",
+    "host": "www.douban.com",
+    "icon": "豆",
+    "path": "/site-icons/douban.ico",
+    "source": "https://www.douban.com/favicon.ico",
+    "sha256": "14ad1b885c1103123e17d16ed68986e3e9fb911a1ca411d03a9e90f58dd0ba39"
+  },
+  {
+    "id": "xiaohongshu",
+    "host": "www.xiaohongshu.com",
+    "icon": "小",
+    "path": "/site-icons/xiaohongshu.ico",
+    "source": "https://www.xiaohongshu.com/favicon.ico",
+    "sha256": "33b25a8e2b0a67d2fc58eb6739a608211af9e62b3fdd935e7ce7e1ce12963372"
+  },
+  {
+    "id": "ctrip",
+    "host": "www.ctrip.com",
+    "icon": "程",
+    "path": "/site-icons/ctrip.ico",
+    "source": "https://www.ctrip.com/favicon.ico",
+    "sha256": "77c041422eac0aeeb1f7506cfc67cccfb9afd062ebabd6790e79117ebeeb6d47"
+  }
+]

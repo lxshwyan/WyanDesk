@@ -3,6 +3,7 @@ import { createDefaultState } from '../data/defaults';
 import { decryptDeskState, encryptDeskState, isEncryptedDeskState, validateSyncPassphrase } from './cloudCrypto';
 
 describe('cloud end-to-end encryption', () => {
+  // Three real PBKDF2 derivations need room for contention on shared CI workers.
   it('round-trips a desk state without exposing its content', async () => {
     const state = createDefaultState();
     state.workspaces[0].note = '只有用户能看到的便签';
@@ -11,7 +12,7 @@ describe('cloud end-to-end encryption', () => {
     expect(JSON.stringify(encrypted)).not.toContain('只有用户能看到的便签');
     await expect(decryptDeskState(encrypted, 'correct horse battery staple')).resolves.toEqual(state);
     await expect(decryptDeskState(encrypted, 'wrong password')).rejects.toThrow('同步密码');
-  });
+  }, 20_000);
 
   it('requires a meaningful passphrase', () => {
     expect(() => validateSyncPassphrase('short')).toThrow('至少 10');

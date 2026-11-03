@@ -131,7 +131,7 @@ export function CommandPalette({ open, commands, shortcuts, currentWorkspaceId, 
       <section className="command-palette" role="dialog" aria-modal="true" aria-label="命令中心">
         <div className="command-search">
           <Search aria-hidden="true" />
-          <input ref={inputRef} role="combobox" aria-autocomplete="list" aria-expanded={open} aria-controls={listId} aria-activedescendant={activeKey ? `${listId}-${activeIndex}` : undefined} value={query} onChange={(event) => { setQuery(event.target.value); setActiveIndex(0); }} onKeyDown={handleKeyDown} placeholder="搜索网站、任务、便签与阅读资料" aria-label="搜索桌面内容与操作" />
+          <input ref={inputRef} role="combobox" aria-autocomplete="list" aria-expanded={open} aria-controls={listId} aria-activedescendant={activeKey ? `${listId}-${activeIndex}` : undefined} value={query} onChange={(event) => { setQuery(event.target.value); setActiveIndex(0); }} onKeyDown={handleKeyDown} placeholder="搜索组件、网站、任务、便签与阅读资料" aria-label="搜索桌面内容与操作" />
           {query ? <button type="button" onClick={() => setQuery('')} aria-label="清空"><X /></button> : <kbd>ESC</kbd>}
         </div>
         {onLoadTabs && <div className="command-tabs-access"><button className="quiet-button" type="button" disabled={busy} onClick={() => {

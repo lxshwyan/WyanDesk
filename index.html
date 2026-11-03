@@ -3,16 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#e7eef8" />
+    <meta name="theme-color" content="#d6e8ee" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="微言桌面" />
     <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1" />
-    <meta name="description" content="WyanDesk 是本地优先的浏览器桌面，把常用网站、任务、日程、便签、提醒、专注计时和可选云同步集中在一个安静、可定制的工作台。" />
-    <meta property="og:title" content="WyanDesk｜本地优先的浏览器桌面与效率工作台" />
-    <meta property="og:description" content="整理常用网站、任务、日程与便签；无需登录即可使用，可按需开启 PWA、浏览器扩展和端到端加密云同步。" />
+    <meta name="description" content="微言桌面 WyanDesk 是本地优先的浏览器桌面，支持组件搜索、快捷网址、多便签、单位换算、专注休息循环与精选壁纸。网页、PWA 和新标签页扩展共用四种桌面模式，可选账号同步与端到端加密。" />
+    <meta property="og:title" content="微言桌面 WyanDesk｜浏览器桌面、书签导航与新标签页" />
+    <meta property="og:description" content="微言桌面 WyanDesk 是本地优先的浏览器桌面，支持组件搜索、快捷网址、多便签、单位换算、专注休息循环与精选壁纸。网页、PWA 和新标签页扩展共用四种桌面模式，可选账号同步与端到端加密。" />
     <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="WyanDesk" />
+    <meta property="og:site_name" content="微言桌面 WyanDesk" />
     <meta property="og:locale" content="zh_CN" />
     <meta property="og:url" content="https://desk.wyanhub.com/" />
     <meta property="og:image" content="https://desk.wyanhub.com/pwa-512.png" />
@@ -20,19 +20,53 @@
     <meta property="og:image:height" content="512" />
     <meta property="og:image:alt" content="微言桌面 WyanDesk Logo" />
     <meta name="twitter:card" content="summary" />
-    <meta name="twitter:title" content="WyanDesk｜本地优先的浏览器桌面与效率工作台" />
-    <meta name="twitter:description" content="整理常用网站、任务、日程与便签；无需登录即可使用，可按需开启同步。" />
+    <meta name="twitter:title" content="微言桌面 WyanDesk｜浏览器桌面、书签导航与新标签页" />
+    <meta name="twitter:description" content="微言桌面 WyanDesk 是本地优先的浏览器桌面，支持组件搜索、快捷网址、多便签、单位换算、专注休息循环与精选壁纸。网页、PWA 和新标签页扩展共用四种桌面模式，可选账号同步与端到端加密。" />
     <meta name="twitter:image" content="https://desk.wyanhub.com/pwa-512.png" />
     <meta name="twitter:image:alt" content="微言桌面 WyanDesk Logo" />
     <link rel="canonical" href="https://desk.wyanhub.com/" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" sizes="192x192" href="/pwa-192.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <title>WyanDesk｜本地优先的浏览器桌面与效率工作台</title>
+    <title>微言桌面 WyanDesk｜浏览器桌面、书签导航与新标签页</title>
     <script>
       (() => {
         const documentRoot = document.documentElement;
         documentRoot.classList.add('js');
+        const scenes = ['dawn', 'ocean', 'night', 'cyber', 'forest', 'sunset', 'iris', 'sand'];
+        function applyAppearance(preferences) {
+          const scene = scenes.includes(preferences?.scene) ? preferences.scene : preferences ? 'ocean' : 'night';
+          documentRoot.dataset.deskScene = scene;
+          documentRoot.dataset.deskMaterial = preferences?.transparentAppearance === true ? 'transparent' : 'default';
+          const view = preferences?.wallpaperView || {};
+          const bounded = (number, fallback, max) => typeof number === 'number' && Number.isFinite(number) ? Math.max(0, Math.min(max, number)) : fallback;
+          documentRoot.dataset.deskInk = view.tone === 'dark' ? 'dark' : 'light';
+          documentRoot.style.setProperty('--wallpaper-position', `${bounded(view.x, 50, 100)}% ${bounded(view.y, 50, 100)}%`);
+          documentRoot.style.setProperty('--clear-surface-opacity', String(bounded(view.strength, 10, 30) / 100));
+          const wallpaperIds = ['alpine-lake', 'dune-sunset', 'crete-bay', 'coastal-clouds'];
+          const wallpaper = preferences?.wallpaper;
+          const favorites = Array.isArray(wallpaper?.favoriteIds) ? [...new Set(wallpaper.favoriteIds.filter((id) => wallpaperIds.includes(id)))] : [];
+          const pool = favorites.length ? wallpaperIds.filter((id) => favorites.includes(id)) : wallpaperIds;
+          const today = new Date();
+          const day = Math.floor(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()) / 86400000);
+          const selected = wallpaper?.daily === true ? pool[((day % pool.length) + pool.length) % pool.length] : wallpaper?.selectedId;
+          const image = (typeof preferences?.customBackground === 'string' ? preferences.customBackground : '') || (wallpaperIds.includes(selected) ? `wallpapers/${selected}.jpg` : '');
+          if (image) {
+            try { documentRoot.style.setProperty('--desk-startup-image', `url(${JSON.stringify(new URL(image, document.baseURI).href)})`); }
+            catch { documentRoot.style.removeProperty('--desk-startup-image'); }
+          } else documentRoot.style.removeProperty('--desk-startup-image');
+        }
+        window.WyanDeskStartup = { applyAppearance };
+        let preferences;
+        try {
+          const saved = JSON.parse(window.localStorage.getItem('wyandesk.state.v1') || 'null');
+          preferences = saved && typeof saved === 'object'
+            ? saved.preferences && typeof saved.preferences === 'object' ? saved.preferences : {}
+            : undefined;
+        } catch {
+          // A failed preference read must not block the desktop or its fallback.
+        }
+        applyAppearance(preferences);
         window.setTimeout(() => {
           const mountPoint = document.getElementById('root');
           if (mountPoint?.querySelector('.seo-fallback')) documentRoot.classList.add('seo-fallback-timeout');
@@ -43,12 +77,13 @@
       {
         "@context": "https://schema.org",
         "@type": "WebApplication",
-        "name": "WyanDesk",
-        "alternateName": "微言桌面",
+        "name": "微言桌面 WyanDesk",
+        "alternateName": ["微言桌面", "WyanDesk"],
         "url": "https://desk.wyanhub.com/",
         "image": "https://desk.wyanhub.com/pwa-512.png",
-        "description": "本地优先的浏览器桌面，用于整理常用网站、任务、日程、便签、提醒和专注计时。",
+        "description": "微言桌面 WyanDesk 是本地优先的浏览器桌面，支持组件搜索、快捷网址、多便签、单位换算、专注休息循环与精选壁纸。网页、PWA 和新标签页扩展共用四种桌面模式，可选账号同步与端到端加密。",
         "applicationCategory": "ProductivityApplication",
+        "featureList": ["统一搜索直达桌面组件", "图标桌面、卡片桌面、轻导航与极简模式", "月历", "工作便签", "专注计时", "快速计算", "单位换算", "专注休息循环", "专注刷新与跨标签接续", "外观方案与组件预览", "精选壁纸与每日切换", "天气", "今日任务", "今日日程", "下一提醒", "今日概览", "倒数日", "世界时钟", "剪贴板", "快捷操作", "多张独立便签与可拖动缩放浮窗", "组件与分组自定义背景", "书签和日历导入导出", "可选端到端加密同步"],
         "operatingSystem": "任何支持现代浏览器的系统",
         "inLanguage": "zh-CN",
         "isPartOf": {
@@ -63,11 +98,35 @@
       }
     </script>
     <style>
+      :root {
+        --scene-dawn-background: linear-gradient(165deg, #f8fbff 0%, #e9f2ff 40%, #f0e9ff 70%, #d9e8f1 100%);
+        --scene-ocean-background: radial-gradient(circle at 76% 22%, #b8e2eb 0%, #8cbfcf 24%, #316a86 62%, #15384e 100%);
+        --scene-night-background: radial-gradient(circle at 75% 18%, #3f5b92 0%, #263f71 23%, #152643 58%, #0c172b 100%);
+        --scene-cyber-background: radial-gradient(circle at 72% 74%, rgba(37,238,208,.2), transparent 25%), radial-gradient(circle at 23% 82%, rgba(141,76,255,.24), transparent 32%), radial-gradient(circle at 68% 12%, #253d72 0%, #101e40 27%, #071225 62%, #040b18 100%);
+        --scene-forest-background: linear-gradient(155deg, #f0f5ed 0%, #dce9dd 42%, #b5cbb9 74%, #7e9e8c 100%);
+        --scene-sunset-background: linear-gradient(170deg, #fff5e9 0%, #f8dfcc 40%, #edb69e 72%, #bb8592 100%);
+        --scene-iris-background: linear-gradient(155deg, #f6f3fc 0%, #e8e0f4 42%, #cdc0e1 74%, #9a95bf 100%);
+        --scene-sand-background: linear-gradient(170deg, #faf6ee 0%, #efe5d4 48%, #ddc6a4 78%, #c1a47e 100%);
+      }
+      html[data-desk-scene="dawn"] { --desk-startup-background: var(--scene-dawn-background); }
+      html[data-desk-scene="ocean"] { --desk-startup-background: var(--scene-ocean-background); }
+      html[data-desk-scene="night"] { --desk-startup-background: var(--scene-night-background); }
+      html[data-desk-scene="cyber"] { --desk-startup-background: var(--scene-cyber-background); }
+      html[data-desk-scene="forest"] { --desk-startup-background: var(--scene-forest-background); }
+      html[data-desk-scene="sunset"] { --desk-startup-background: var(--scene-sunset-background); }
+      html[data-desk-scene="iris"] { --desk-startup-background: var(--scene-iris-background); }
+      html[data-desk-scene="sand"] { --desk-startup-background: var(--scene-sand-background); }
+      html {
+        background-color: #d6e8ee;
+        background-image: var(--desk-startup-image, none), var(--desk-startup-background, none);
+        background-position: var(--wallpaper-position, center);
+        background-size: cover;
+        background-attachment: fixed;
+      }
       html, body, #root {
         min-width: 320px;
         min-height: 100%;
         margin: 0;
-        background: #e8eef7;
       }
       .seo-fallback {
         min-height: 100vh;
@@ -77,7 +136,7 @@
         place-items: center;
         padding: 32px 20px;
         color: #172033;
-        background: #e8eef7;
+        background: var(--desk-startup-background, #d6e8ee);
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
       }
       html.js:not(.seo-fallback-timeout) .seo-fallback { display: none; }
@@ -137,7 +196,7 @@
               <p class="seo-fallback__subtitle">微言桌面 · 本地优先的浏览器桌面</p>
             </div>
           </header>
-          <p class="seo-fallback__summary">把常用网站、任务、日程、便签、提醒和专注计时放在一个安静、可定制的工作台。无需登录即可使用，核心桌面数据默认保存在当前浏览器。</p>
+          <p class="seo-fallback__summary">把常用网站、任务、日程和桌面组件放在一个可定制的工作台。搜索“日历”“便签”“计算器”，即可打开组件浮窗；隐藏的组件也能临时使用。无需登录即可使用，核心桌面数据默认保存在当前浏览器。</p>
           <section aria-labelledby="seo-features">
             <h2 id="seo-features">一个页面，整理每天要用的内容</h2>
             <ul>
@@ -147,7 +206,9 @@
               <li>登录后可按需开启云同步、历史恢复和端到端加密，不登录仍可完整使用本地桌面。</li>
             </ul>
           </section>
+          <p class="seo-fallback__summary">支持月历、工作便签、专注计时、快速计算、单位换算、天气、今日任务、今日日程、下一提醒、今日概览、倒数日、世界时钟、剪贴板和快捷操作。便签可复制并独立改名，组件可更换背景；浮窗可拖动和缩放，原位置继续显示。专注支持休息循环与同来源跨标签接续；外观方案及组件可先预览再应用，壁纸位置与文字明暗可调。精选壁纸可收藏、按日切换，资源随应用提供。</p>
           <nav class="seo-fallback__links" aria-label="WyanDesk 相关链接">
+            <a href="./about.html">产品介绍</a>
             <a href="https://wyanhub.com/">了解 WyanHub</a>
             <a href="https://github.com/lxshwyan/WyanDesk">查看 WyanDesk 开源项目</a>
           </nav>

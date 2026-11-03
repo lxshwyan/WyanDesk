@@ -1,7 +1,8 @@
 import type { DeskRailWidgetId, DeskRailWidth, DeskWidgetHeight, DeskWidgetId, DeskWidgetSize, DeskWidgetWidth, DeskWorkspaceLayout } from '../types';
+import { normalizeBlockBackground } from './blockBackground';
 
-export const deskWidgetIds: DeskWidgetId[] = ['shortcuts', 'quickActions', 'schedule', 'focus', 'reminders', 'tasks', 'notes', 'calendar', 'calculator', 'worldClock', 'dailyOverview', 'weather', 'clipboard', 'countdown'];
-export const deskRailWidgetIds: DeskRailWidgetId[] = ['quickActions', 'dailyOverview', 'notes', 'weather', 'countdown', 'clipboard', 'schedule', 'tasks', 'reminders', 'focus', 'calendar', 'calculator', 'worldClock'];
+export const deskWidgetIds: DeskWidgetId[] = ['shortcuts', 'quickActions', 'schedule', 'focus', 'reminders', 'tasks', 'notes', 'calendar', 'calculator', 'worldClock', 'dailyOverview', 'weather', 'clipboard', 'countdown', 'converter'];
+export const deskRailWidgetIds: DeskRailWidgetId[] = ['quickActions', 'dailyOverview', 'notes', 'weather', 'countdown', 'clipboard', 'schedule', 'tasks', 'reminders', 'focus', 'calendar', 'calculator', 'worldClock', 'converter'];
 
 export function createDefaultWorkspaceLayout(): DeskWorkspaceLayout {
   const widgets = Object.fromEntries(deskWidgetIds.map((id) => [id, { width: 'standard', height: 'standard' }])) as Record<DeskWidgetId, DeskWidgetSize>;
@@ -13,27 +14,28 @@ export function createDefaultWorkspaceLayout(): DeskWorkspaceLayout {
   };
 }
 
-export function normalizeWorkspaceLayout(value: unknown): DeskWorkspaceLayout {
+export function normalizeWorkspaceLayout(value: unknown, noteIds: DeskRailWidgetId[] = []): DeskWorkspaceLayout {
   const defaults = createDefaultWorkspaceLayout();
   if (!value || typeof value !== 'object') return defaults;
   const record = value as { railWidth?: unknown; widgets?: unknown; widgetOrder?: unknown };
   const railWidth: DeskRailWidth = record.railWidth === 'sites' || record.railWidth === 'widgets' ? record.railWidth : 'balanced';
   const savedWidgets = record.widgets && typeof record.widgets === 'object' ? record.widgets as Record<string, unknown> : {};
   const widgets = { ...defaults.widgets };
-  for (const id of deskWidgetIds) {
+  for (const id of [...deskWidgetIds, ...noteIds]) {
     const item = savedWidgets[id];
-    if (!item || typeof item !== 'object') continue;
-    const saved = item as { width?: unknown; height?: unknown };
+    if (!item || typeof item !== 'object') { if (noteIds.includes(id as DeskRailWidgetId)) widgets[id] = { ...defaults.widgets.notes }; continue; }
+    const saved = item as { width?: unknown; height?: unknown; background?: unknown };
     const width: DeskWidgetWidth = saved.width === 'medium' || saved.width === 'wide' ? saved.width : 'standard';
     const height: DeskWidgetHeight = saved.height === 'compact' || saved.height === 'tall' ? saved.height : 'standard';
-    widgets[id] = { width, height };
+    const background = normalizeBlockBackground(saved.background);
+    widgets[id] = { width, height, ...(background ? { background } : {}) };
   }
   const savedOrder = Array.isArray(record.widgetOrder) ? record.widgetOrder : [];
   const widgetOrder = savedOrder.filter((id): id is DeskRailWidgetId => (
-    typeof id === 'string' && deskRailWidgetIds.includes(id as DeskRailWidgetId)
+    typeof id === 'string' && [...deskRailWidgetIds, ...noteIds].includes(id as DeskRailWidgetId)
   ));
   const uniqueOrder = [...new Set(widgetOrder)];
-  for (const id of deskRailWidgetIds) {
+  for (const id of [...deskRailWidgetIds, ...noteIds]) {
     if (!uniqueOrder.includes(id)) uniqueOrder.push(id);
   }
   let foundTallWidget = false;
@@ -48,7 +50,7 @@ export function normalizeWorkspaceLayout(value: unknown): DeskWorkspaceLayout {
 export function updateWidgetSize(layout: DeskWorkspaceLayout, id: DeskWidgetId, next: Partial<DeskWidgetSize>): DeskWorkspaceLayout {
   const widgets = { ...layout.widgets };
   if (id !== 'shortcuts' && next.height === 'tall') {
-    for (const railWidgetId of deskRailWidgetIds) {
+    for (const railWidgetId of layout.widgetOrder) {
       if (railWidgetId !== id && widgets[railWidgetId].height === 'tall') {
         widgets[railWidgetId] = { ...widgets[railWidgetId], height: 'standard' };
       }

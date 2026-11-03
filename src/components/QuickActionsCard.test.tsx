@@ -21,6 +21,6 @@ describe('QuickActionsCard', () => {
     expect(html).toContain('新日程');
     expect(html).toContain('开始专注');
     expect(html).toContain('设置');
-    expect(html).toContain('更多');
+    expect(html).toContain('全部操作');
   });
 });

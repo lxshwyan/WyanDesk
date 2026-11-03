@@ -8,7 +8,7 @@ describe('workspace widget layout', () => {
     first.widgets.tasks.height = 'tall';
     first.widgetOrder.reverse();
     expect(second.widgets.tasks.height).toBe('standard');
-    expect(second.widgetOrder).toEqual(['quickActions', 'dailyOverview', 'notes', 'weather', 'countdown', 'clipboard', 'schedule', 'tasks', 'reminders', 'focus', 'calendar', 'calculator', 'worldClock']);
+    expect(second.widgetOrder).toEqual(['quickActions', 'dailyOverview', 'notes', 'weather', 'countdown', 'clipboard', 'schedule', 'tasks', 'reminders', 'focus', 'calendar', 'calculator', 'worldClock', 'converter']);
     expect(second.widgets.notes).toEqual({ width: 'wide', height: 'standard' });
   });
 
@@ -26,7 +26,7 @@ describe('workspace widget layout', () => {
     expect(layout.widgets.tasks).toEqual({ width: 'wide', height: 'tall' });
     expect(layout.widgets.notes).toEqual({ width: 'standard', height: 'standard' });
     expect(layout.widgets.weather).toEqual({ width: 'medium', height: 'compact' });
-    expect(layout.widgetOrder).toEqual(['tasks', 'quickActions', 'dailyOverview', 'notes', 'weather', 'countdown', 'clipboard', 'schedule', 'reminders', 'focus', 'calendar', 'calculator', 'worldClock']);
+    expect(layout.widgetOrder).toEqual(['tasks', 'quickActions', 'dailyOverview', 'notes', 'weather', 'countdown', 'clipboard', 'schedule', 'reminders', 'focus', 'calendar', 'calculator', 'worldClock', 'converter']);
   });
 
   it('normalizes older layouts to one three-row work widget', () => {
@@ -45,7 +45,7 @@ describe('workspace widget layout', () => {
   it('preserves an existing complete custom order', () => {
     const customOrder = ['notes', 'tasks', 'reminders', 'focus', 'schedule', 'quickActions', 'calculator', 'calendar', 'worldClock', 'dailyOverview', 'weather', 'clipboard', 'countdown'] as const;
     const layout = normalizeWorkspaceLayout({ widgetOrder: customOrder });
-    expect(layout.widgetOrder).toEqual(customOrder);
+    expect(layout.widgetOrder).toEqual([...customOrder, 'converter']);
   });
 
   it('updates one widget without mutating the source layout', () => {
@@ -87,8 +87,8 @@ describe('workspace widget layout', () => {
   it('moves a rail widget without mutating the source order', () => {
     const source = createDefaultWorkspaceLayout();
     const next = moveRailWidget(source, 'focus', -1);
-    expect(source.widgetOrder).toEqual(['quickActions', 'dailyOverview', 'notes', 'weather', 'countdown', 'clipboard', 'schedule', 'tasks', 'reminders', 'focus', 'calendar', 'calculator', 'worldClock']);
-    expect(next.widgetOrder).toEqual(['quickActions', 'dailyOverview', 'notes', 'weather', 'countdown', 'clipboard', 'schedule', 'tasks', 'focus', 'reminders', 'calendar', 'calculator', 'worldClock']);
+    expect(source.widgetOrder).toEqual(['quickActions', 'dailyOverview', 'notes', 'weather', 'countdown', 'clipboard', 'schedule', 'tasks', 'reminders', 'focus', 'calendar', 'calculator', 'worldClock', 'converter']);
+    expect(next.widgetOrder).toEqual(['quickActions', 'dailyOverview', 'notes', 'weather', 'countdown', 'clipboard', 'schedule', 'tasks', 'focus', 'reminders', 'calendar', 'calculator', 'worldClock', 'converter']);
     expect(moveRailWidget(next, 'quickActions', -1)).toBe(next);
   });
 

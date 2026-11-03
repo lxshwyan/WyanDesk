@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
 import type { SceneId } from '../types';
+import { backgroundImageValue } from '../lib/backgroundImage';
 
 interface SceneBackdropProps {
   scene: SceneId;
@@ -9,7 +10,7 @@ interface SceneBackdropProps {
 
 export function SceneBackdrop({ scene, motion, customBackground }: SceneBackdropProps) {
   const style = customBackground
-    ? ({ '--custom-background': `url("${customBackground}")` } as CSSProperties)
+    ? ({ '--custom-background': backgroundImageValue(customBackground, document.baseURI) } as CSSProperties)
     : undefined;
 
   return (

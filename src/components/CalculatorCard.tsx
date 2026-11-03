@@ -1,5 +1,5 @@
+import { useWidgetViewState } from './WidgetViewState';
 import { Calculator } from 'lucide-react';
-import { useState } from 'react';
 
 type CalculatorOperator = '+' | '−' | '×' | '÷';
 
@@ -16,10 +16,10 @@ function formatValue(value: number): string {
 }
 
 export function CalculatorCard() {
-  const [display, setDisplay] = useState('0');
-  const [storedValue, setStoredValue] = useState<number | null>(null);
-  const [operator, setOperator] = useState<CalculatorOperator | null>(null);
-  const [awaitingOperand, setAwaitingOperand] = useState(false);
+  const [display, setDisplay] = useWidgetViewState('display', '0');
+  const [storedValue, setStoredValue] = useWidgetViewState<number | null>('storedValue', null);
+  const [operator, setOperator] = useWidgetViewState<CalculatorOperator | null>('operator', null);
+  const [awaitingOperand, setAwaitingOperand] = useWidgetViewState('awaitingOperand', false);
 
   function inputDigit(digit: string) {
     setDisplay((current) => awaitingOperand || current === '0' || current === '错误' ? digit : `${current}${digit}`.slice(0, 12));

@@ -1,0 +1,23 @@
+.wallpaper-picker { margin-bottom: 18px; }
+.wallpaper-picker-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.wallpaper-picker-heading > strong { color: var(--text); font-size: var(--type-body); }
+.wallpaper-tabs { display: flex; padding: 2px; border-radius: var(--radius-control); background: var(--surface-muted); }
+.wallpaper-tabs button { min-height: 30px; padding: 0 10px; border: 0; border-radius: var(--radius-control); color: var(--muted-strong); background: transparent; font: inherit; font-size: var(--type-control); cursor: pointer; }
+.wallpaper-tabs button[aria-pressed="true"] { color: var(--blue); background: var(--surface-item-strong); }
+.wallpaper-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
+.wallpaper-option { position: relative; min-width: 0; }
+.wallpaper-apply { position: relative; display: grid; width: 100%; gap: 7px; padding: 4px 4px 8px; border: 1px solid var(--line); border-radius: var(--radius-card); color: var(--text); background: #fff; text-align: left; cursor: pointer; font: inherit; font-size: var(--type-control); }
+.wallpaper-apply[aria-pressed="true"] { border-color: var(--blue); }
+.wallpaper-apply img { width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; border-radius: var(--radius-control); }
+.wallpaper-apply span { padding: 0 4px; }
+.wallpaper-apply > svg { position: absolute; top: 10px; left: 10px; width: 20px; height: 20px; padding: 3px; border-radius: 50%; color: #fff; background: var(--blue); }
+.wallpaper-favorite { position: absolute; top: 9px; right: 9px; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: var(--radius-control); color: #fff; background: color-mix(in srgb, var(--text) 80%, transparent); cursor: pointer; }
+.wallpaper-favorite svg { width: 17px; height: 17px; }
+.wallpaper-daily { display: flex; align-items: center; gap: 8px; margin-top: 10px; color: var(--text); font-size: var(--type-control); cursor: pointer; }
+.wallpaper-daily input { accent-color: var(--blue); }
+.wallpaper-daily small { display: block; margin-top: 2px; color: var(--muted-strong); font-size: var(--type-caption); }
+.wallpaper-credits { margin-top: 10px; color: var(--muted-strong); font-size: var(--type-caption); }
+.wallpaper-credits summary { padding: 4px 0; cursor: pointer; }
+.wallpaper-credits a { display: block; padding: 4px 0; color: var(--blue); overflow-wrap: anywhere; }
+.wallpaper-empty { color: var(--muted-strong); font-size: var(--type-control); }
+@media (max-width:620px) { .wallpaper-favorite { width: 44px; height: 44px; } .wallpaper-tabs button { min-height: 44px; min-width: 44px; } .wallpaper-daily { min-height: 44px; } .wallpaper-credits summary { min-height: 44px; display: list-item; padding-top: 12px; } }

@@ -2,14 +2,83 @@
 
 All notable changes to WyanDesk are documented here.
 
-## [0.6.2] - 2026-10-25
+## [0.12.2] - 2026-11-02
 
-### Changed since 0.5.0
+### Public distribution — 2026-11-03
 
-- Added compact game shortcuts for quick, slow, and realtime activities in WyanHub Toolbox, with native popover dismissal and mobile spacing.
-- Added account-scoped persistent slow-interaction notifications with direct links and version-aware read state; visible-page polling is separate from desktop encrypted sync and does not provide closed-browser push.
-- Added same-origin website monitoring integration, removed from extension builds to retain Manifest V3 script constraints.
-- Synchronized the standalone frontend, extension authorization/capture improvements, and official extension ZIP to GitHub and Gitee. Local desktop features remain usable without a backend; hosted account/API services are separate.
+- Synchronize the standalone public frontend from 0.6.2 to 0.12.2, including the official manual extension ZIP and checksum, current privacy notes, bilingual documentation and an actual isolated-extension screenshot.
+- Include four desktop modes, user-owned favorite groups, multi-note widgets and shared floating views, local widget search and unit conversion, bundled CC0 wallpapers, and appearance previews introduced since the previous public snapshot.
+- Add a reproducible Edge store adapter. Store package 0.12.2.1 preserves the manual package runtime and adds Simplified Chinese listing metadata; its November 2 submission was In review when checked. Source synchronization does not publish a new store version or deploy the official site.
+- Keep state v9 backup/sync compatibility. Older clients can drop fields they do not recognize; update web and extension clients before mixing versions, and export JSON before downgrading.
+
+### Changed
+
+- Show all icon-desktop groups and all their websites by default, with manual collapse still available.
+- Remove nested group/site scroll regions and use page scrolling, including edge scrolling while dragging.
+- Restore the expanded view when reopening or switching desktops; saved content and preferences stay unchanged.
+
+## [0.12.1] - 2026-11-02
+
+### Fixed
+
+- Resolve wallpaper image URLs against the document before built external CSS consumes them; preserve selected photos after apply and reload on web, subpath and extension pages.
+- Place the existing local wallpaper upload beside curated photos and make its file input keyboard reachable.
+
+## [0.12.0] - 2026-11-02
+
+### Added
+
+- Same-origin focus session persistence, cross-tab controls, once-only completion claims, and existing daily-focus task association.
+- Three appearance schemes with real desktop preview, explicit apply/cancel, presentation-only restore, wallpaper position, text tone and faint-surface strength.
+- Searchable live component previews with separate temporary-use and add-to-desktop actions.
+
+### Privacy
+
+- Focus sessions stay in separate local storage, outside desktop backup/cloud sync; browser-close alarms are not provided. No new API or extension permission.
+
+## [0.8.2] - 2026-11-01
+
+### Changed
+
+- Add sites by pasting a URL, suggest a local name and collapse optional icon controls in both website and favorite forms. Label the top favorite launcher and clarify independent copy actions.
+- Show explicit web-search, URL and saved-site actions with keyboard selection, including in minimal mode.
+- Offer three non-destructive desktop display choices in onboarding and settings; keep imported bookmarks safe from initial template resets.
+- Consolidate PWA and extension installation on the settings home and expose a direct account-menu entry on the website. Keep state v9, APIs, permissions and backend services unchanged.
+
+## [0.8.1] - 2026-11-01
+
+### Changed
+
+- Move the minimal-view toggle to the former top-bar layout position and remove the duplicate action below search. Keep layout editing under Desktop settings → Component layout, with the existing bottom toolbar for completion.
+
+## [0.8.0] - 2026-11-01
+
+### Added
+
+- User-owned favorite groups in the top launcher, with editable default entries, group/link ordering, custom sites and independent copies from website shortcuts.
+- One-click minimal view through the clock or a visible action, preserving existing widgets and content.
+
+### Changed
+
+- Bound centered dialogs to a balanced height with internal scrolling; use two columns for the desktop favorite-copy picker and one on phones.
+- Upgrade saved state to v9, including favorite groups and minimal-view preference in the existing backup, sync and encryption envelopes without new APIs or permissions. Update older extensions before mixing clients; export v9 data before a frontend downgrade.
+
+## [0.7.3] - 2026-10-30
+
+### Changed
+
+- Replace Events, Collect and Booking in the app launcher with Stillwater, Sudoku and the 3D IDC demo. Keep Toolbox, Forms and Survey, open all six links in a new tab, and maintain the menu independently of saved bookmarks.
+
+### Fixed
+
+- Allow the existing real PBKDF2 round-trip test additional time on shared CI workers without changing encryption parameters or assertions.
+
+## [0.7.1] - 2026-10-30
+
+### Fixed
+
+- Route extension assistant configuration, questions and answer feedback through the existing authenticated Desk API transport instead of the extension origin. Preserve cancellation and show an actionable network error.
+- Reduce continuous backdrop filtering on permanent desktop surfaces. Pause scene animations in place while a modal is open and resume them when it closes; preserve motion preferences and local data.
 
 ## [0.5.0] - 2026-10-23
 

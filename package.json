@@ -1,7 +1,7 @@
 {
   "name": "wyan-desk",
   "private": true,
-  "version": "0.6.2",
+  "version": "0.12.2",
   "description": "Local-first browser desktop for bookmarks, tasks, notes, schedules, focus sessions and reminders.",
   "license": "MIT",
   "homepage": "https://desk.wyanhub.com",
@@ -32,6 +32,7 @@
     "validate:pwa": "node scripts/validate-pwa.mjs",
     "validate:seo": "node scripts/validate-seo.mjs",
     "package:extension": "npm run build:extension && npm run validate:extension && sh scripts/package-extension.sh",
+    "package:edge-store": "python3 scripts/package-edge-store.py",
     "test": "vitest run",
     "typecheck": "tsc --noEmit --pretty false"
   },

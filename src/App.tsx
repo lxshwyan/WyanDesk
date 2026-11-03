@@ -1,3 +1,10 @@
+import { WidgetGallery } from './components/WidgetGallery';
+import './components/transparentAppearance.css';
+import { AppearanceStudio } from './components/AppearanceStudio';
+import { applyAppearanceSelection, captureAppearance, selectAppearancePreset, type AppearanceSelection } from './lib/appearance';
+import { desktopBackground, normalizeWallpaperPreferences, selectedWallpaper } from './lib/wallpapers';
+import { NoteCard } from './components/NoteCard';
+import { copyNoteCard, removeNoteCard, updateNoteCard } from './lib/noteCards';
 import { FormEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
 import { flushSync } from 'react-dom';
 import packageInfo from '../package.json';
@@ -18,7 +25,6 @@ import {
   CircleHelp,
   Cloud,
   CloudOff,
-  Command,
   Database,
   Download,
   FileUp,
@@ -33,6 +39,7 @@ import {
   Keyboard,
   Languages,
   ListTodo,
+  ListChecks,
   LogIn,
   LogOut,
   Layers3,
@@ -63,9 +70,7 @@ import {
   X,
 } from 'lucide-react';
 import { CommandPalette, type CommandResource, type CommandShortcut, type DeskCommand } from './components/CommandPalette';
-import { ContinueWorkCard } from './components/ContinueWorkCard';
 import { AssistantPanel } from './components/AssistantPanel';
-import { SlowMessages } from './components/SlowMessages';
 import { CategoryManager } from './components/CategoryManager';
 import { CategoryContextMenu } from './components/CategoryContextMenu';
 import { CalculatorCard } from './components/CalculatorCard';
@@ -74,6 +79,8 @@ import { CloudHistoryModal } from './components/CloudHistoryModal';
 import { CountdownCard } from './components/CountdownCard';
 import { DeleteCloudDataModal } from './components/DeleteCloudDataModal';
 import { DailyOverviewCard } from './components/DailyOverviewCard';
+import { useFocusSession } from './lib/useFocusSession';
+import { UnitConverterCard } from './components/UnitConverterCard';
 import { FocusTimerCard } from './components/FocusTimerCard';
 import { QuickActionsCard } from './components/QuickActionsCard';
 import { QuickActionsManager } from './components/QuickActionsManager';
@@ -82,6 +89,20 @@ import { ReminderSettingsModal } from './components/ReminderSettingsModal';
 import { SceneBackdrop } from './components/SceneBackdrop';
 import { ScheduleCard } from './components/ScheduleCard';
 import { ShortcutCard } from './components/ShortcutCard';
+import { WebsiteCatalog } from './components/WebsiteCatalog';
+import { ShortcutFields } from './components/ShortcutFields';
+import { DesktopSearch } from './components/DesktopSearch';
+import { DesktopModePicker } from './components/DesktopModePicker';
+import { BlockBackgroundEditor } from './components/BlockBackgroundEditor';
+import { IconWidgetRail } from './components/IconWidgetRail';
+import { blockImageLength, MAX_BLOCK_IMAGES_LENGTH, withRecommendedWidgetBackgrounds } from './lib/blockBackground';
+import type { BlockBackground } from './types';
+import { DesktopModeMenu } from './components/DesktopModeMenu';
+import { IconDesktop } from './components/IconDesktop';
+import { placeDesktopCategory, placeDesktopShortcut } from './lib/iconDesktop';
+import { currentDesktopMode, withDesktopMode, type DesktopMode } from './lib/desktopMode';
+import { WebsitePreview } from './components/WebsiteIcon';
+import { websiteIconSource } from './lib/websiteIcons';
 import { ShortcutContextMenu } from './components/ShortcutContextMenu';
 import { ShortcutManager } from './components/ShortcutManager';
 import { ShortcutGroupManager } from './components/ShortcutGroupManager';
@@ -107,19 +128,23 @@ import { WidgetFrame } from './components/WidgetFrame';
 import { WeatherCard } from './components/WeatherCard';
 import { WorldClockCard } from './components/WorldClockCard';
 import { WorldClockSettingsModal } from './components/WorldClockSettingsModal';
-import { createBalancedState, createDefaultState, defaultShortcuts } from './data/defaults';
+import { createBalancedState, createDefaultState } from './data/defaults';
+import { FavoriteMenu } from './components/FavoriteMenu';
+import { FavoriteManager } from './components/FavoriteManager';
 import { mergeBrowserBookmarks, parseBrowserBookmarks } from './lib/bookmarks';
 import { categoryDeleteTarget, categoryExists, cleanCategoryName, deleteCategory, moveCategory, renameCategory, shortcutsForCategory } from './lib/categories';
 import { MAX_VISIBLE_SHORTCUT_CATEGORIES, visibleShortcutCategoryCount } from './lib/categoryNavigation';
 import { parseQuickCommand, quickCommandURL } from './lib/commandShortcuts';
+import { primaryModifierKey } from './lib/keyboardPlatform';
 import { deskSearchItems } from './lib/deskSearch';
+import { workspaceWidgetSearchItems } from './lib/widgetSearch';
 import { readingURL, organizeReadingItem } from './lib/readingList';
 import { activateBrowserTab, readOpenBrowserTabs } from './lib/browserWorkspace';
 import { openExternalURL, openExternalURLs, type BatchOpenResult } from './lib/externalWindows';
 import { MINUTE_MS, startAlignedClock } from './lib/alignedClock';
 import { getNextReminder, minutesFromTime, reminderIsDue } from './lib/reminders';
 import { playReminderChime, shouldShowInPageReminder, type ReminderAlertData } from './lib/reminderAlert';
-import { directURLFromInput, moveShortcutInCategory, moveShortcutToCategory, shortcutURLExists } from './lib/shortcuts';
+import { moveShortcutInCategory, moveShortcutToCategory, shortcutURLExists } from './lib/shortcuts';
 import { toggleShortcutGroupMembership } from './lib/shortcutGroups';
 import { parseICS, serializeWorkspaceICS } from './lib/ics';
 import { clearDeskState, normalizeURL, parseDeskBackup, readDeskStateWithStatus, readRecoverySnapshot, serializeDeskBackup, writeDeskState } from './lib/storage';
@@ -137,9 +162,13 @@ import { DEFAULT_QUICK_ACTION_IDS, MAX_QUICK_ACTIONS } from './lib/quickActions'
 import type { DeskEvent, DeskInboxItem, DeskPreferences, DeskRailWidgetId, DeskRailWidth, DeskReminder, DeskState, DeskTask, DeskTimeEvent, DeskWidgetHeight, DeskWidgetId, DeskWidgetSize, DeskWorkspace, SceneId, Shortcut, ShortcutGroup } from './types';
 
 const sceneOptions: Array<{ id: SceneId; name: string; description: string }> = [
+  { id: 'ocean', name: '深海微光', description: '安静、清透' },
   { id: 'dawn', name: '晨雾山川', description: '柔和、清透' },
-  { id: 'ocean', name: '深海微光', description: '安静、专注' },
-  { id: 'night', name: '星夜地平线', description: '深色、沉浸' },
+  { id: 'forest', name: '松林薄雾', description: '自然、清新' },
+  { id: 'sunset', name: '落日余晖', description: '温暖、松弛' },
+  { id: 'iris', name: '鸢尾暮色', description: '轻盈、舒缓' },
+  { id: 'sand', name: '沙丘暖砂', description: '质朴、简洁' },
+  { id: 'night', name: '星夜地平线', description: '深色、沉浸 · 默认' },
   { id: 'cyber', name: '霓虹矩阵', description: '科技、绚丽' },
 ];
 
@@ -211,11 +240,13 @@ function localDateKey(value: Date): string {
 
 function popoverMenuItems(popover: HTMLElement | null): HTMLElement[] {
   if (!popover) return [];
-  return [...popover.querySelectorAll<HTMLElement>('[role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"]')]
+  const selector = popover.classList.contains('app-switcher') ? 'button:not(:disabled), a[href], select:not(:disabled)' : '[role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"]';
+  return [...popover.querySelectorAll<HTMLElement>(selector)]
     .filter((item) => !item.hasAttribute('disabled') && item.getAttribute('aria-disabled') !== 'true');
 }
 
 function handlePopoverNavigation(event: ReactKeyboardEvent<HTMLElement>, popover: HTMLElement | null): void {
+  if (event.target instanceof HTMLSelectElement) return;
   const items = popoverMenuItems(popover);
   if (!items.length) return;
   const currentIndex = items.indexOf(document.activeElement as HTMLElement);
@@ -246,22 +277,37 @@ function useMediaQuery(query: string): boolean {
 
 function App() {
   const [initialRead] = useState(() => readDeskStateWithStatus());
-  const [state, setState] = useState<DeskState>(initialRead.state);
+  const [savedState, setState] = useState<DeskState>(initialRead.state);
+  const [appearanceDraft, setAppearanceDraft] = useState<AppearanceSelection | null>(null);
+  const [appearanceRestore, setAppearanceRestore] = useState<AppearanceSelection | null>(null);
+  const [appearancePreset, setAppearancePreset] = useState('');
+  const [appearanceCanvasPreview, setAppearanceCanvasPreview] = useState(false);
+  const state = useMemo(() => appearanceDraft ? applyAppearanceSelection(savedState, appearanceDraft) : savedState, [savedState, appearanceDraft]);
+  const appearanceSelection = useMemo(() => appearanceDraft || captureAppearance(savedState), [savedState, appearanceDraft]);
+
   const captureReceiptsRef = useRef(new WeakMap<DeskState, ExtensionCaptureQueue>());
   const isMobileViewport = useMediaQuery('(max-width: 620px)');
   const [now, setNow] = useState(() => new Date());
+  const wallpaperPreferences = normalizeWallpaperPreferences(state.preferences.wallpaper);
+  const activeBackground = desktopBackground(state.preferences, now);
+  useLayoutEffect(() => {
+    window.WyanDeskStartup?.applyAppearance({ scene: state.preferences.scene, customBackground: activeBackground, transparentAppearance: state.preferences.transparentAppearance, wallpaperView: state.preferences.wallpaperView });
+  }, [state.preferences.scene, activeBackground, state.preferences.transparentAppearance, state.preferences.wallpaperView]);
   const [activeCategory, setActiveCategory] = useState('常用');
   const [visibleCategoryCount, setVisibleCategoryCount] = useState(MAX_VISIBLE_SHORTCUT_CATEGORIES);
   const [query, setQuery] = useState('');
-  const [searchFocused, setSearchFocused] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsView, setSettingsView] = useState<SettingsView>('home');
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [layoutEditing, setLayoutEditing] = useState(false);
+  const [allIconGroups, setAllIconGroups] = useState(true);
+  const [backgroundTarget, setBackgroundTarget] = useState<string | null>(null);
   const [draggingWidgetId, setDraggingWidgetId] = useState<DeskRailWidgetId | null>(null);
   const [dragTargetWidgetId, setDragTargetWidgetId] = useState<DeskRailWidgetId | null>(null);
   const dragTargetWidgetIdRef = useRef<DeskRailWidgetId | null>(null);
   const [switcherOpen, setSwitcherOpen] = useState(false);
+  const [activeFavoriteGroupId, setActiveFavoriteGroupId] = useState('');
+  const [favoriteManager, setFavoriteManager] = useState<{ mode: 'list' | 'add' | 'copy'; shortcut?: Shortcut } | null>(null);
   const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [shortcutGroupsMenuOpen, setShortcutGroupsMenuOpen] = useState(false);
@@ -281,12 +327,14 @@ function App() {
   const [editingTimeEventId, setEditingTimeEventId] = useState('');
   const [commandOpen, setCommandOpen] = useState(false);
   const [commandInitialQuery, setCommandInitialQuery] = useState('');
-  const [noteSearchPending, setNoteSearchPending] = useState(false);
+  const [widgetPreviewRequest, setWidgetPreviewRequest] = useState<{ widgetId: DeskRailWidgetId; workspaceId: string; serial: number } | null>(null);
+  const widgetPreviewSerial = useRef(0);
   const [keyboardHelpOpen, setKeyboardHelpOpen] = useState(false);
   const [inboxOpen, setInboxOpen] = useState(false);
   const [inboxInitialKind, setInboxInitialKind] = useState<DeskInboxItem['kind']>('note');
   const [inboxInitialItemId, setInboxInitialItemId] = useState('');
   const [onboardingOpen, setOnboardingOpen] = useState(() => initialRead.isNew && !initialRead.state.preferences.onboardingCompleted);
+  const [onboardingTemplatesAvailable, setOnboardingTemplatesAvailable] = useState(initialRead.isNew);
   const [cloudHistoryOpen, setCloudHistoryOpen] = useState(false);
   const [syncConflictOpen, setSyncConflictOpen] = useState(false);
   const [deleteCloudOpen, setDeleteCloudOpen] = useState(false);
@@ -311,10 +359,12 @@ function App() {
   const [toast, setToast] = useState<ToastMessage | null>(null);
   const [saveStatus, setSaveStatus] = useState<'saving' | 'saved' | 'error'>('saved');
   const [recoveryAvailable] = useState(initialRead.recovered);
-  const [focusDuration, setFocusDuration] = useState(() => initialRead.state.preferences.focusDurationMinutes);
-  const [focusRemaining, setFocusRemaining] = useState(() => initialRead.state.preferences.focusDurationMinutes * 60);
-  const [focusRunning, setFocusRunning] = useState(false);
-  const [shortcutDraft, setShortcutDraft] = useState({ title: '', url: '', category: activeCategory, icon: '', accent: '#3478f6' });
+  const { session: focusSession, options: focusOptions, target: focusTarget, act: focusAct, configure: configureFocusCycle, claimCompletion: claimFocusCompletion } = useFocusSession(initialRead.state.preferences.focusDurationMinutes, state.preferences.focusCycleEnabled, state.preferences.focusBreakMinutes);
+  const focusDuration = focusSession.durationMinutes;
+  const focusRemaining = focusSession.remainingSeconds;
+  const focusRunning = focusSession.running;
+  const [shortcutDraft, setShortcutDraft] = useState({ title: '', url: '', category: activeCategory, icon: '', accent: '#3478f6', iconStyle: 'auto' as 'auto' | 'text' });
+  const [websiteCatalogOpen, setWebsiteCatalogOpen] = useState(false);
   const [eventDraft, setEventDraft] = useState({ title: '', date: localDateKey(new Date()), time: '09:00' });
   const searchInputRef = useRef<HTMLInputElement>(null);
   const taskInputRef = useRef<HTMLInputElement>(null);
@@ -347,7 +397,7 @@ function App() {
   const unlockRevealSecondFrameRef = useRef<number | undefined>(undefined);
   const lockActivityLogRef = useRef(lockActivityLog);
   const activeLockSessionRef = useRef<{ id: string; startedAt: string } | null>(null);
-  const deskSync = useDeskSync(state, setState, initialRead.isNew);
+  const deskSync = useDeskSync(savedState, setState, initialRead.isNew);
   const pwa = usePwa();
   const extensionRuntime = isExtensionRuntime();
   const closeShortcutContextMenu = useCallback(() => setShortcutContextMenu(null), []);
@@ -408,6 +458,7 @@ function App() {
   const lockDesktop = useCallback((enterFullscreen: boolean) => {
     setSettingsOpen(false);
     setLayoutEditing(false);
+    setBackgroundTarget(null);
     setSwitcherOpen(false);
     setWorkspaceMenuOpen(false);
     setAccountMenuOpen(false);
@@ -416,6 +467,7 @@ function App() {
     setShortcutModalOpen(false);
     setShortcutManagerOpen(false);
     setShortcutGroupManagerOpen(false);
+    setFavoriteManager(null);
     setShortcutContextMenu(null);
     setCategoryContextMenu(null);
     setCategoryModalOpen(false);
@@ -604,19 +656,15 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (!focusRunning) return;
-    const timer = window.setInterval(() => setFocusRemaining((remaining) => Math.max(0, remaining - 1)), 1000);
-    return () => window.clearInterval(timer);
-  }, [focusRunning]);
-
-  useEffect(() => {
-    if (focusRemaining !== 0 || !focusRunning) return;
-    setFocusRunning(false);
-    notify('本轮专注完成，起来活动一下吧');
-    if (state.preferences.systemNotifications && 'Notification' in window && Notification.permission === 'granted') {
-      new Notification('微言桌面', { body: '本轮专注完成，起来活动一下吧', icon: '/favicon.svg' });
-    }
-  }, [focusRemaining, focusRunning, notify, state.preferences.systemNotifications]);
+    if (!focusSession.completionId) return;
+    void claimFocusCompletion(focusSession.completionId).then((claimed) => {
+      if (!claimed) return;
+      notify(focusSession.message);
+      if (state.preferences.systemNotifications && 'Notification' in window && Notification.permission === 'granted') {
+        try { new Notification('微言桌面', { body: focusSession.message, icon: '/favicon.svg' }); } catch { /* The in-page completion remains visible. */ }
+      }
+    });
+  }, [focusSession.completionId, focusSession.message, claimFocusCompletion, notify, state.preferences.systemNotifications]);
 
   useEffect(() => {
     const syncFullscreenState = () => {
@@ -648,10 +696,10 @@ function App() {
   useEffect(() => {
     setSaveStatus('saving');
     try {
-      writeDeskState(state);
-      const receipt = captureReceiptsRef.current.get(state);
+      writeDeskState(savedState);
+      const receipt = captureReceiptsRef.current.get(savedState);
       if (receipt) {
-        captureReceiptsRef.current.delete(state);
+        captureReceiptsRef.current.delete(savedState);
         void acknowledgeExtensionCaptures(receipt).catch(() => undefined);
       }
       setSaveStatus('saved');
@@ -659,7 +707,7 @@ function App() {
       setSaveStatus('error');
       notify('本地存储空间不足，自定义背景可能无法保存');
     }
-  }, [state, notify]);
+  }, [savedState, notify]);
 
   useEffect(() => {
     if (initialRead.recovered) notify('发现异常本地数据，已保留恢复副本');
@@ -883,6 +931,8 @@ function App() {
   }, [deliverReminderAlert, state.workspaces]);
 
   const workspace = state.workspaces.find((item) => item.id === state.activeWorkspaceId) || state.workspaces[0];
+  const iconMode = workspace.shortcutStyle === 'icons';
+  const navigationMode = workspace.viewMode === 'navigation' && !iconMode;
 
   const updateWorkspaceById = useCallback((workspaceId: string, update: (current: DeskWorkspace) => DeskWorkspace) => {
     setState((current) => ({
@@ -905,29 +955,30 @@ function App() {
     workspaceName: item.name,
   }))), [state.workspaces]);
 
-  useEffect(() => {
-    if (!noteSearchPending || commandOpen) return;
-    const frame = window.requestAnimationFrame(() => {
-      const editor = document.querySelector<HTMLTextAreaElement>('textarea[aria-label="工作便签"]');
-      editor?.scrollIntoView({ block: 'center' });
-      editor?.focus();
-      setNoteSearchPending(false);
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, [noteSearchPending, commandOpen, workspace.id]);
+  const searchableWidgets = useMemo(() => workspaceWidgetSearchItems(workspace), [workspace.noteTitle, workspace.noteCards]);
 
-  const commandResources: CommandResource[] = deskSearchItems(state).map((item) => ({
+  function openWidget(widgetId: DeskRailWidgetId, workspaceId = workspace.id) {
+    const target = state.workspaces.find((item) => item.id === workspaceId);
+    if (!target || !workspaceWidgetSearchItems(target).some((item) => item.id === widgetId)) return;
+    if (workspaceId !== workspace.id) switchWorkspace(workspaceId);
+    setQuery('');
+    setWidgetPreviewRequest({ widgetId, workspaceId, serial: ++widgetPreviewSerial.current });
+  }
+
+  const commandResources: CommandResource[] = [...searchableWidgets.map((item): CommandResource => ({
+    ...item, id: `widget-${workspace.id}-${item.id}`, kind: '组件', icon: <AppWindow />,
+    run: () => openWidget(item.id),
+  })), ...deskSearchItems(state).map((item) => ({
     ...item,
     id: `${item.workspaceId || 'inbox'}-${item.id}`,
     kind: item.kind === 'task' ? '任务' : item.kind === 'note' ? '便签' : '收集',
     icon: item.kind === 'task' ? <ListTodo /> : item.kind === 'note' ? <StickyNote /> : <BookMarked />,
     run: () => {
       if (item.kind === 'inbox') { openInbox('link', item.id); return; }
-      if (item.workspaceId) switchWorkspace(item.workspaceId);
-      if (item.kind === 'task') setTaskDetailId(item.id);
-      else { updatePreferences({ showNotes: true }); setNoteSearchPending(true); }
+      if (item.kind === 'task') { if (item.workspaceId) switchWorkspace(item.workspaceId); setTaskDetailId(item.id); }
+      else openWidget(item.id.startsWith('note:') ? item.id as DeskRailWidgetId : 'notes', item.workspaceId);
     },
-  }));
+  }))];
 
   async function loadSearchTabs(): Promise<CommandResource[]> {
     return (await readOpenBrowserTabs()).map((tab) => ({ id: String(tab.id), label: tab.title, description: tab.url, keywords: tab.url, kind: '切换标签', icon: <AppWindow />, run: () => activateBrowserTab(tab) }));
@@ -982,7 +1033,7 @@ function App() {
       resizeObserver?.disconnect();
       window.removeEventListener('resize', recalculate);
     };
-  }, [activeCategory, activeCategoryShortcuts.length, categories, query]);
+  }, [activeCategory, activeCategoryShortcuts.length, categories, query, workspace.shortcutStyle]);
 
   const visibleShortcuts = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase('zh-CN');
@@ -1000,15 +1051,10 @@ function App() {
     setShortcutsExpanded(false);
   }, [activeCategory, isMobileViewport, query, state.activeWorkspaceId, state.preferences.compactShortcuts, workspace.layout.widgets.shortcuts.height]);
 
-  const wyanProducts = useMemo(() => defaultShortcuts.filter((item) => item.category === '微言服务'), []);
   const recentShortcuts = useMemo(() => workspace.recentShortcutIds
     .map((id) => workspace.shortcuts.find((shortcut) => shortcut.id === id))
     .filter((shortcut): shortcut is Shortcut => Boolean(shortcut)), [workspace.recentShortcutIds, workspace.shortcuts]);
   const recentSearchSuggestions = recentShortcuts.slice(0, 4);
-  const showRecentSearchSuggestions = state.preferences.showRecent
-    && searchFocused
-    && !query.trim()
-    && recentSearchSuggestions.length > 0;
   const todayKey = localDateKey(now);
   const upcomingEvents = useMemo(() => [...workspace.events]
     .filter((event) => event.date >= todayKey)
@@ -1021,6 +1067,30 @@ function App() {
   const selectedTask = workspace.tasks.find((task) => task.id === taskDetailId);
   const selectedTimeEvent = state.timeEvents.find((event) => event.id === editingTimeEventId);
   const orderedTasks = useMemo(() => prioritizeTasks(workspace.tasks, workspace.focusTaskId), [workspace.focusTaskId, workspace.tasks]);
+
+  function cancelAppearanceDraft() { setAppearanceDraft(null); setAppearancePreset(''); setAppearanceCanvasPreview(false); }
+  function applyAppearanceDraft() {
+    if (!appearanceDraft) return;
+    const previous = captureAppearance(savedState);
+    setAppearanceRestore(previous);
+    setState((current) => applyAppearanceSelection(current, appearanceDraft));
+    cancelAppearanceDraft();
+    notify('外观已应用', () => { setState((current) => applyAppearanceSelection(current, previous)); setAppearanceRestore(null); });
+  }
+  function restoreAppearance() {
+    if (!appearanceRestore) return;
+    setState((current) => applyAppearanceSelection(current, appearanceRestore));
+    setAppearanceRestore(null); cancelAppearanceDraft(); notify('已恢复上次外观');
+  }
+  useEffect(() => {
+    if (!appearanceCanvasPreview && (!settingsOpen || settingsView !== 'appearance')) { setAppearanceDraft(null); setAppearancePreset(''); }
+  }, [appearanceCanvasPreview, settingsOpen, settingsView]);
+  useEffect(() => {
+    if (!appearanceCanvasPreview) return;
+    const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') { event.preventDefault(); cancelAppearanceDraft(); } };
+    window.addEventListener('keydown', escape);
+    return () => window.removeEventListener('keydown', escape);
+  }, [appearanceCanvasPreview]);
 
   function updatePreferences(next: Partial<DeskPreferences>) {
     setState((current) => ({ ...current, preferences: { ...current.preferences, ...next } }));
@@ -1048,7 +1118,6 @@ function App() {
   }
 
   function moveDraggedRailWidget(sourceId: DeskRailWidgetId, clientX: number, clientY: number) {
-    if (!layoutEditing) return;
     const target = document.elementFromPoint(clientX, clientY)?.closest<HTMLElement>('.widget-frame[data-widget]');
     const targetId = target?.dataset.widget as DeskRailWidgetId | undefined;
     const nextTargetId = targetId && targetId !== sourceId && workspace.layout.widgetOrder.includes(targetId) ? targetId : null;
@@ -1107,22 +1176,24 @@ function App() {
   }
 
   function resetCurrentLayout() {
-    updateWorkspace((current) => ({ ...current, layout: createDefaultWorkspaceLayout() }));
+    updateWorkspace((current) => ({ ...current, layout: { ...createDefaultWorkspaceLayout(), widgets: { ...createDefaultWorkspaceLayout().widgets, ...Object.fromEntries((current.noteCards || []).map((note) => [note.id, current.layout.widgets[note.id]])) }, widgetOrder: [...createDefaultWorkspaceLayout().widgetOrder, ...(current.noteCards || []).map((note) => note.id)] } }));
     notify('已恢复当前桌面的默认布局');
   }
 
   function enterLayoutEditing() {
     setSettingsOpen(false);
+    updatePreferences({ minimalMode: false });
     setLayoutEditing(true);
   }
 
   function applyOnboardingTemplate(template: DeskTemplate) {
+    if (!onboardingTemplatesAvailable || state.preferences.onboardingCompleted) return;
     const workspaces = template === 'balanced'
       ? createBalancedState().workspaces
       : template === 'simple'
         ? createDefaultState().workspaces
         : [createBlankWorkspace(uid('workspace'), '我的桌面')];
-    setState((current) => ({ ...current, activeWorkspaceId: workspaces[0].id, workspaces }));
+    setState((current) => withDesktopMode({ ...current, activeWorkspaceId: workspaces[0].id, workspaces }, currentDesktopMode(current)));
     resetWorkspaceView(workspaces[0]);
   }
 
@@ -1210,25 +1281,6 @@ function App() {
     const shortcut = workspace.shortcuts.find((item) => item.id === id);
     if (shortcut) openShortcut(shortcut);
     else openExternal(fallbackURL);
-  }
-
-  function submitSearch(event: FormEvent) {
-    event.preventDefault();
-    const value = query.trim();
-    if (!value) return;
-    if (visibleShortcuts.length) {
-      openShortcut(visibleShortcuts[0]);
-      return;
-    }
-    const directURL = directURLFromInput(value);
-    if (directURL) {
-      openExternal(directURL);
-      return;
-    }
-    const searchURL = state.preferences.searchEngine === 'bing'
-      ? `https://cn.bing.com/search?q=${encodeURIComponent(value)}`
-      : `https://www.baidu.com/s?wd=${encodeURIComponent(value)}`;
-    openExternal(searchURL);
   }
 
   function addTask(event: FormEvent) {
@@ -1498,7 +1550,10 @@ function App() {
       notify('该分类已存在');
       return false;
     }
-    updateWorkspace((current) => ({ ...current, ...renameCategory(current.categories, current.shortcuts, name, category) }));
+    updateWorkspace((current) => {
+      const categoryBackgrounds = Object.fromEntries(Object.entries(current.categoryBackgrounds || {}).map(([key, background]) => [key === name ? category : key, background]));
+      return { ...current, categoryBackgrounds, ...renameCategory(current.categories, current.shortcuts, name, category) };
+    });
     if (activeCategory === name) setActiveCategory(category);
     notify(`已更名为“${category}”`);
     return true;
@@ -1525,6 +1580,7 @@ function App() {
       return {
         ...current,
         categories: nextCategories,
+        categoryBackgrounds: Object.fromEntries(Object.entries(current.categoryBackgrounds || {}).filter(([category]) => category !== name)),
         shortcuts: nextShortcuts,
         recentShortcutIds: current.recentShortcutIds.filter((id) => !deletedIds.has(id)),
         shortcutGroups: nextGroups,
@@ -1540,8 +1596,9 @@ function App() {
   }
 
   function openShortcutModal() {
+    setWebsiteCatalogOpen(false);
     setEditingShortcutId('');
-    setShortcutDraft({ title: '', url: '', category: activeCategory, icon: '', accent: '#3478f6' });
+    setShortcutDraft({ title: '', url: '', category: activeCategory, icon: '', accent: '#3478f6', iconStyle: 'auto' });
     setShortcutManagerOpen(false);
     setShortcutModalOpen(true);
   }
@@ -1551,9 +1608,16 @@ function App() {
     setShortcutManagerOpen(true);
   }
 
+  function openFavorites(mode: 'list' | 'add' | 'copy' = 'list', shortcut?: Shortcut) {
+    appSwitcherTriggerRef.current?.focus({ preventScroll: true });
+    setSwitcherOpen(false);
+    setShortcutManagerOpen(false);
+    setFavoriteManager({ mode, shortcut });
+  }
+
   function openShortcutEditor(shortcut: Shortcut) {
     setEditingShortcutId(shortcut.id);
-    setShortcutDraft({ title: shortcut.title, url: shortcut.url, category: shortcut.category, icon: shortcut.icon, accent: shortcut.accent });
+    setShortcutDraft({ title: shortcut.title, url: shortcut.url, category: shortcut.category, icon: shortcut.icon, accent: shortcut.accent, iconStyle: shortcut.iconStyle || (websiteIconSource(shortcut) ? 'auto' : 'text') });
     setShortcutManagerOpen(false);
     setShortcutModalOpen(true);
   }
@@ -1581,6 +1645,7 @@ function App() {
         url,
         category,
         icon: shortcutDraft.icon.trim() || Array.from(title)[0] || 'W',
+        iconStyle: shortcutDraft.iconStyle,
         accent: shortcutDraft.accent,
         description: existing?.description || '自定义网站',
         featured: existing?.featured,
@@ -1599,6 +1664,36 @@ function App() {
     } catch (error) {
       notify(error instanceof Error ? error.message : '网址格式不正确');
     }
+  }
+
+  function addCatalogWebsite(site: Shortcut, category: string) {
+    if (!workspace.categories.includes(category) || shortcutURLExists(workspace.shortcuts, site.url)) return;
+    const shortcut = { ...site, id: uid('shortcut'), category, iconStyle: 'auto' as const };
+    updateWorkspace((current) => shortcutURLExists(current.shortcuts, site.url) ? current : { ...current, shortcuts: [...current.shortcuts, shortcut] });
+    setActiveCategory(category);
+    setQuery('');
+    notify(`已将${site.title}添加到“${category}”`);
+  }
+
+  function setDesktopViewMode(viewMode: DesktopMode) {
+    setAllIconGroups(true);
+    setState((current) => withDesktopMode(current, viewMode));
+  }
+
+  function chooseDesktopMode(mode: DesktopMode) {
+    setLayoutEditing(false);
+    setAllIconGroups(true);
+    setState((current) => withDesktopMode(current, mode));
+  }
+
+  function toggleMinimalMode() {
+    setLayoutEditing(false);
+    updatePreferences({ minimalMode: !state.preferences.minimalMode });
+  }
+
+  function categoryContent(category: string) {
+    const sites = workspace.shortcuts.filter((site) => site.category === category);
+    return <><span>{category}</span><small className="category-count">{sites.length}</small></>;
   }
 
   function openEventModal() {
@@ -1655,26 +1750,20 @@ function App() {
   }
 
   function setFocusPreset(minutes: number) {
-    setFocusDuration(minutes);
-    setFocusRemaining(minutes * 60);
-    setFocusRunning(false);
+    focusAct({ type: 'preset', minutes });
     updatePreferences({ focusDurationMinutes: minutes });
   }
 
   function startFocus() {
     updatePreferences({ showFocusTimer: true });
-    if (focusRemaining === 0) setFocusRemaining(focusDuration * 60);
-    setFocusRunning(true);
+    focusAct({ type: 'start', now: Date.now() }, workspace.focusTaskId ? { workspaceId: workspace.id, taskId: workspace.focusTaskId } : undefined);
   }
 
-  function toggleFocus() {
-    if (focusRemaining === 0) setFocusRemaining(focusDuration * 60);
-    setFocusRunning((running) => !running);
-  }
-
-  function resetFocus() {
-    setFocusRunning(false);
-    setFocusRemaining(focusDuration * 60);
+  function toggleFocus() { focusAct({ type: 'toggle', now: Date.now() }, workspace.focusTaskId ? { workspaceId: workspace.id, taskId: workspace.focusTaskId } : undefined); }
+  function resetFocus() { focusAct({ type: 'reset' }); }
+  function changeFocusCycle(enabled: boolean, breakMinutes: number) {
+    updatePreferences({ focusCycleEnabled: enabled, focusBreakMinutes: breakMinutes });
+    configureFocusCycle({ enabled, breakMinutes });
   }
 
   function updateReminder(id: string, next: Partial<DeskReminder>) {
@@ -1733,6 +1822,7 @@ function App() {
   }
 
   function uploadBackground(event: ChangeEvent<HTMLInputElement>) {
+    cancelAppearanceDraft();
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
@@ -1747,7 +1837,7 @@ function App() {
     const reader = new FileReader();
     reader.addEventListener('load', () => {
       if (typeof reader.result === 'string') {
-        updatePreferences({ customBackground: reader.result });
+        updatePreferences({ customBackground: reader.result, wallpaper: { ...wallpaperPreferences, selectedId: '', daily: false } });
         notify('背景已更换');
       }
     });
@@ -1755,10 +1845,13 @@ function App() {
   }
 
   function selectScene(scene: SceneId) {
-    updatePreferences({ scene, customBackground: '' });
+    cancelAppearanceDraft();
+    updatePreferences({ scene, customBackground: '', wallpaper: { ...wallpaperPreferences, selectedId: '', daily: false } });
   }
 
   function resetWorkspaceView(next: DeskWorkspace) {
+    setAllIconGroups(true);
+    setWidgetPreviewRequest(null);
     setActiveCategory(next.categories[0] || '常用');
     setQuery('');
     setTaskDetailId('');
@@ -1797,7 +1890,7 @@ function App() {
       notify('已经有同名桌面');
       return false;
     }
-    const next = createBlankWorkspace(uid('workspace'), value);
+    const next = createBlankWorkspace(uid('workspace'), value, workspace);
     setState((current) => ({ ...current, activeWorkspaceId: next.id, workspaces: [...current.workspaces, next] }));
     resetWorkspaceView(next);
     notify(`已创建“${value}”桌面`);
@@ -1871,7 +1964,7 @@ function App() {
   }
 
   function exportDeskBackup() {
-    const url = URL.createObjectURL(new Blob([serializeDeskBackup(state)], { type: 'application/json' }));
+    const url = URL.createObjectURL(new Blob([serializeDeskBackup(savedState)], { type: 'application/json' }));
     const link = document.createElement('a');
     link.href = url;
     link.download = `WyanDesk-backup-${localDateKey(new Date())}.json`;
@@ -2015,6 +2108,7 @@ function App() {
           const merged = mergeBrowserBookmarks(current.categories, current.shortcuts, imported, () => uid('shortcut'));
           return { ...current, categories: merged.categories, shortcuts: merged.shortcuts };
         });
+        setOnboardingTemplatesAvailable(false);
         notify(`已导入 ${preview.added} 个浏览器书签`);
       } catch (error) {
         notify(error instanceof Error ? error.message : '书签文件无法读取');
@@ -2027,7 +2121,7 @@ function App() {
     try {
       const outcome = await pwa.requestInstall();
       if (outcome === 'unavailable') {
-        openSettings('data');
+        openSettings();
         return;
       }
       notify(outcome === 'accepted' ? '微言桌面正在安装' : '已取消安装');
@@ -2041,9 +2135,8 @@ function App() {
     clearDeskState();
     const defaults = createDefaultState();
     setState(defaults);
-    setFocusDuration(25);
-    setFocusRemaining(25 * 60);
-    setFocusRunning(false);
+    configureFocusCycle({ enabled: defaults.preferences.focusCycleEnabled, breakMinutes: defaults.preferences.focusBreakMinutes });
+    focusAct({ type: 'preset', minutes: 25 });
     setActiveCategory(defaults.workspaces[0].categories[0]);
     setSettingsOpen(false);
     setShortcutManagerOpen(false);
@@ -2100,7 +2193,10 @@ function App() {
     { id: 'read-later', label: '稍后阅读', description: `${state.inbox.filter((item) => item.kind === 'link' && !item.readAt).length} 条未读资料`, keywords: '阅读 摘录 收藏 资料 read later', icon: <BookMarked />, run: () => openInbox('link') },
     { id: 'start-focus', label: '开始专注', description: `${focusDuration} 分钟专注计时`, keywords: '专注 番茄钟 计时 timer', icon: <TimerReset />, run: startFocus },
     { id: 'shortcut-groups', label: '管理网站组合', description: '创建或编辑一组常用网站', keywords: '组合 分组 标签页 工作组 group tabs', icon: <FolderOpen />, run: () => setShortcutGroupManagerOpen(true) },
+    { id: 'favorite-groups', label: '管理常用分组', description: '编辑顶部重点网站，或从快捷网站复制', keywords: '常用 收藏 应用 分组 复制 favorite', icon: <Grid3X3 />, run: () => openFavorites() },
+    { id: 'minimal-mode', label: state.preferences.minimalMode ? '显示完整桌面' : '切换极简模式', description: '保留时间和搜索，原有布局不变', keywords: '极简 专注 壁纸 简洁 minimal', icon: <Minimize2 />, run: toggleMinimalMode },
     { id: 'wyan-tools', label: '微言工具', description: '图片、PDF、表格与文本工具', keywords: '工具箱 图片 pdf 表格', icon: <Wrench />, run: () => openShortcutById('wyan-tools', 'https://tools.wyanhub.com/tools') },
+    { id: 'wyan-whiteboard', label: '手绘白板', description: '在新标签页打开本机白板', keywords: '白板 手绘 草稿 流程图 Excalidraw', icon: <Pencil />, run: () => openShortcutById('wyan-whiteboard', 'https://tools.wyanhub.com/tools/design/whiteboard') },
     { id: 'translate', label: '在线翻译', description: '打开百度翻译', keywords: '翻译 英语 translate', icon: <Languages />, run: () => openExternal('https://fanyi.baidu.com') },
     { id: 'meeting', label: '发起会议', description: '打开腾讯会议', keywords: '会议 视频 meeting', icon: <Video />, run: () => openShortcutById('tencent-meeting', 'https://meeting.tencent.com') },
     { id: 'add-shortcut', label: '添加网站', description: '收藏一个常用网址', keywords: '网站 网址 收藏 shortcut', icon: <Plus />, run: openShortcutModal },
@@ -2109,11 +2205,11 @@ function App() {
     { id: 'manage-workspaces', label: '管理桌面', description: '新建、复制或切换桌面', keywords: '桌面 工作 学习 生活 workspace', icon: <Layers3 />, run: () => setWorkspaceManagerOpen(true) },
     { id: 'edit-layout', label: '调整卡片布局', description: `调整“${workspace.name}”的卡片尺寸`, keywords: '布局 卡片 宽度 高度 放大 缩小 layout resize', icon: <AppWindow />, run: enterLayoutEditing },
     { id: 'import-bookmarks', label: '导入浏览器书签', description: '从 Chrome、Edge 或 Firefox 迁移网站', keywords: '书签 收藏 导入 bookmark chrome edge firefox', icon: <BookMarked />, run: () => openSettings('data') },
-    ...(!extensionRuntime ? [{ id: 'install-browser-extension', label: '安装浏览器扩展', description: '下载测试版 ZIP 并查看 Chrome / Edge 安装步骤', keywords: '安装 扩展 插件 zip chrome edge extension', icon: <Download />, run: () => openSettings('data') }] : []),
+    ...(!extensionRuntime ? [{ id: 'install-browser-extension', label: '安装浏览器扩展', description: '下载测试版 ZIP 并查看 Chrome / Edge 安装步骤', keywords: '安装 扩展 插件 zip chrome edge extension', icon: <Download />, run: () => openSettings() }] : []),
     { id: 'open-settings', label: '桌面设置', description: '背景、组件与提醒', keywords: '设置 背景 组件 setting', icon: <Settings />, run: () => openSettings() },
     { id: 'keyboard-help', label: '键盘快捷操作', description: '查看搜索与命令快捷键', keywords: '快捷键 键盘 shortcut help', icon: <Keyboard />, run: () => setKeyboardHelpOpen(true) },
     ...(pwa.installMode === 'prompt' ? [{ id: 'install-app', label: '安装到桌面', description: '作为独立应用打开微言桌面', keywords: '安装 桌面 应用 pwa install', icon: <Download />, run: installDeskApp }] : []),
-    ...(['ios-safari', 'ios-other', 'browser'].includes(pwa.installMode) ? [{ id: 'install-help', label: '查看安装方法', description: '把微言桌面添加到手机或电脑桌面', keywords: '安装 主屏幕 pwa install', icon: <AppWindow />, run: () => openSettings('data') }] : []),
+    ...(['ios-safari', 'ios-other', 'browser'].includes(pwa.installMode) ? [{ id: 'install-help', label: '查看安装方法', description: '把微言桌面添加到手机或电脑桌面', keywords: '安装 主屏幕 pwa install', icon: <AppWindow />, run: () => openSettings() }] : []),
     { id: 'lock-desktop', label: '锁定桌面', description: '全屏隐藏私人内容', keywords: '锁屏 隐私 lock', icon: <Lock />, run: () => lockDesktop(true) },
     ...state.workspaces.filter((item) => item.id !== workspace.id).map((item) => ({
       id: `switch-workspace-${item.id}`,
@@ -2173,18 +2269,20 @@ function App() {
     tasks: { label: '今日任务', description: '待办与今日重点', checked: state.preferences.showTasks, onChange: (checked) => updatePreferences({ showTasks: checked }) },
     notes: { label: '工作便签', description: '临时记录想法', checked: state.preferences.showNotes, onChange: (checked) => updatePreferences({ showNotes: checked }) },
     calendar: { label: '月历', description: '查看月份与事项日期', checked: state.preferences.showCalendar, onChange: (checked) => updatePreferences({ showCalendar: checked }) },
+    converter: { label: '单位换算', description: '八类常用单位，本机计算', checked: state.preferences.showConverter, onChange: (checked) => updatePreferences({ showConverter: checked }) },
     calculator: { label: '快速计算', description: '无需离开桌面的计算器', checked: state.preferences.showCalculator, onChange: (checked) => updatePreferences({ showCalculator: checked }) },
     worldClock: { label: '世界时钟', description: '跨地区工作时间', checked: state.preferences.showWorldClock, onChange: (checked) => updatePreferences({ showWorldClock: checked }) },
     dailyOverview: { label: '今日概览', description: '汇总待办、日程与提醒', checked: state.preferences.showDailyOverview, onChange: (checked) => updatePreferences({ showDailyOverview: checked }) },
     weather: { label: '天气', description: '手动选择城市，半小时缓存', checked: state.preferences.showWeather, onChange: (checked) => updatePreferences({ showWeather: checked }) },
     clipboard: { label: '剪贴板', description: '点击读取，只保存在本机', checked: state.preferences.showClipboard, onChange: (checked) => updatePreferences({ showClipboard: checked }) },
+    ...Object.fromEntries((workspace.noteCards || []).map((note) => [note.id, { label: note.title, description: '独立便签', checked: !note.hidden, onChange: (checked: boolean) => updateWorkspace((current) => updateNoteCard(current, note.id, { hidden: !checked })) }])),
     countdown: { label: '倒数日', description: '展示最近的目标日期', checked: state.preferences.showCountdown, onChange: (checked) => updatePreferences({ showCountdown: checked }) },
   };
   const visibleRailWidgetOrder = workspace.layout.widgetOrder.filter((id) => railComponentControls[id].checked);
-  const displayedRailWidgetOrder = layoutEditing ? visibleRailWidgetOrder : railWidgetOrderForDisplay(workspace.layout, visibleRailWidgetOrder);
+  const displayedRailWidgetOrder = layoutEditing || iconMode ? visibleRailWidgetOrder : railWidgetOrderForDisplay(workspace.layout, visibleRailWidgetOrder);
   const settingsSceneLabel = state.preferences.customBackground
     ? '自定义背景'
-    : sceneOptions.find((scene) => scene.id === state.preferences.scene)?.name || '默认背景';
+    : selectedWallpaper(state.preferences.wallpaper, now)?.name || sceneOptions.find((scene) => scene.id === state.preferences.scene)?.name || '默认背景';
   const enabledRailWidgetCount = Object.values(railComponentControls).filter((item) => item.checked).length;
   const enabledAuxiliaryContentCount = Number(state.preferences.showRecent) + Number(state.preferences.showTimeEvents);
   const settingsSyncSummary = deskSync.user
@@ -2237,33 +2335,44 @@ function App() {
     );
   }
 
-  function renderRailWidget(id: DeskRailWidgetId) {
+  function renderRailWidget(id: DeskRailWidgetId, previewOnly = false, catalogPreview = false) {
+    const request = widgetPreviewRequest?.workspaceId === workspace.id && widgetPreviewRequest.widgetId === id ? widgetPreviewRequest : null;
     const dragProps = {
+      previewOnly,
+      catalogPreview,
+      previewRequest: request?.serial,
+      onPreviewClose: request ? () => setWidgetPreviewRequest(null) : undefined,
+      allowWide: !iconMode,
+      onBackground: () => setBackgroundTarget(`widget:${id}`),
       dragging: draggingWidgetId === id,
       dropTarget: dragTargetWidgetId === id,
       onDragStart: () => startDraggedRailWidget(id),
       onDragMove: (_widgetId: DeskWidgetId, clientX: number, clientY: number) => moveDraggedRailWidget(id, clientX, clientY),
       onDragEnd: () => finishDraggedRailWidget(id),
     };
-    if (id === 'quickActions') return state.preferences.showQuickActions ? (
+    if (id === 'quickActions') return (state.preferences.showQuickActions || request || catalogPreview) ? (
       <WidgetFrame key={id} id={id} label="快捷操作" size={workspace.layout.widgets[id]} editing={layoutEditing} onChange={(next) => updateCurrentWidget(id, next)} {...dragProps}>
         <QuickActionsCard actions={primaryQuickActions} onOpenAll={() => setCommandOpen(true)} onManage={() => setQuickActionsManagerOpen(true)} />
       </WidgetFrame>
     ) : null;
 
-    if (id === 'schedule') return state.preferences.showSchedule ? (
+    if (id === 'schedule') return (state.preferences.showSchedule || request || catalogPreview) ? (
       <WidgetFrame key={id} id={id} label="今日日程" size={workspace.layout.widgets[id]} editing={layoutEditing} onChange={(next) => updateCurrentWidget(id, next)} {...dragProps}>
         <ScheduleCard events={upcomingEvents} todayKey={todayKey} limit={widgetItemLimit(workspace.layout.widgets[id].height, 1, 3, 5)} onAdd={openEventModal} onRemove={removeEvent} />
       </WidgetFrame>
     ) : null;
 
-    if (id === 'focus') return state.preferences.showFocusTimer ? (
+    if (id === 'converter') return (state.preferences.showConverter || request || catalogPreview) ? (
+      <WidgetFrame key={id} id={id} label="单位换算" size={workspace.layout.widgets[id]} editing={layoutEditing} onChange={(next) => updateCurrentWidget(id, next)} {...dragProps}><UnitConverterCard /></WidgetFrame>
+    ) : null;
+
+    if (id === 'focus') return (state.preferences.showFocusTimer || request || catalogPreview) ? (
       <WidgetFrame key={id} id={id} label="专注计时" size={workspace.layout.widgets[id]} editing={layoutEditing} onChange={(next) => updateCurrentWidget(id, next)} {...dragProps}>
-        <FocusTimerCard durationMinutes={focusDuration} remainingSeconds={focusRemaining} running={focusRunning} onPreset={setFocusPreset} onToggle={toggleFocus} onReset={resetFocus} />
+        <FocusTimerCard durationMinutes={focusDuration} remainingSeconds={focusRemaining} running={focusRunning} phase={focusSession.phase} completedRounds={focusSession.completedRounds} cycleEnabled={focusOptions.enabled} breakMinutes={focusOptions.breakMinutes} taskTitle={(focusTarget ? state.workspaces.find((item) => item.id === focusTarget.workspaceId)?.tasks.find((task) => task.id === focusTarget.taskId) : workspace.tasks.find((task) => task.id === workspace.focusTaskId))?.text} onCycleChange={changeFocusCycle} onPreset={setFocusPreset} onToggle={toggleFocus} onReset={resetFocus} />
       </WidgetFrame>
     ) : null;
 
-    if (id === 'reminders') return state.preferences.showReminders ? (
+    if (id === 'reminders') return (state.preferences.showReminders || request || catalogPreview) ? (
       <WidgetFrame key={id} id={id} label="下一提醒" size={workspace.layout.widgets[id]} editing={layoutEditing} onChange={(next) => updateCurrentWidget(id, next)} {...dragProps}>
         <section className="glass-panel reminder-card">
           <div className="mini-heading"><span><BellRing aria-hidden="true" />下一提醒</span><button type="button" onClick={() => setReminderSettingsOpen(true)}>设置</button></div>
@@ -2278,7 +2387,7 @@ function App() {
       </WidgetFrame>
     ) : null;
 
-    if (id === 'tasks') return state.preferences.showTasks ? (
+    if (id === 'tasks') return (state.preferences.showTasks || request || catalogPreview) ? (
       <WidgetFrame key={id} id={id} label="今日任务" size={workspace.layout.widgets[id]} editing={layoutEditing} onChange={(next) => updateCurrentWidget(id, next)} {...dragProps}>
         <section className="glass-panel tasks-card">
           <div className="mini-heading"><span><ListTodo aria-hidden="true" />今日任务</span><small>{openTaskCount} 待完成</small></div>
@@ -2301,52 +2410,56 @@ function App() {
       </WidgetFrame>
     ) : null;
 
-    if (id === 'notes') return state.preferences.showNotes ? (
-      <WidgetFrame key={id} id={id} label="工作便签" size={workspace.layout.widgets[id]} editing={layoutEditing} onChange={(next) => updateCurrentWidget(id, next)} {...dragProps}>
-        <section className="glass-panel note-card">
-          <div className="mini-heading"><span><StickyNote aria-hidden="true" />工作便签</span><small>自动保存</small></div>
-          <textarea value={workspace.note} onChange={(event) => updateWorkspace((current) => ({ ...current, note: event.target.value }))} placeholder="临时记下一个想法…" aria-label="工作便签" />
-        </section>
-      </WidgetFrame>
-    ) : null;
+    if (id === 'notes' || id.startsWith('note:')) {
+      const extra = workspace.noteCards?.find((note) => note.id === id);
+      if (id === 'notes' ? !state.preferences.showNotes && !request && !catalogPreview : !extra || extra.hidden && !request && !catalogPreview) return null;
+      const title = extra?.title || workspace.noteTitle || '工作便签';
+      return <WidgetFrame key={id} id={id} label={title} size={workspace.layout.widgets[id]} editing={layoutEditing} onChange={(next) => updateCurrentWidget(id, next)} {...dragProps}>
+        <NoteCard title={title} content={extra?.content ?? workspace.note}
+          onRename={(value) => updateWorkspace((current) => updateNoteCard(current, id, { title: value }))}
+          onChange={(value) => updateWorkspace((current) => updateNoteCard(current, id, { content: value }))}
+          onCopy={() => { if ((workspace.noteCards?.length || 0) >= 11) { notify('每个桌面最多 12 张便签'); return; } updateWorkspace((current) => copyNoteCard(current, id, `note:${uid('note')}`)); notify('已复制便签，可点击标题改名'); }}
+          onRemove={extra ? () => { if (extra.content.trim() && !window.confirm(`删除“${extra.title}”及其内容？`)) return; updateWorkspace((current) => removeNoteCard(current, extra.id)); } : undefined} />
+      </WidgetFrame>;
+    }
 
-    if (id === 'calendar') return state.preferences.showCalendar ? (
+    if (id === 'calendar') return (state.preferences.showCalendar || request || catalogPreview) ? (
       <WidgetFrame key={id} id={id} label="月历" size={workspace.layout.widgets[id]} editing={layoutEditing} onChange={(next) => updateCurrentWidget(id, next)} {...dragProps}>
         <MonthCalendarCard now={now} events={workspace.events} tasks={workspace.tasks} />
       </WidgetFrame>
     ) : null;
 
-    if (id === 'calculator') return state.preferences.showCalculator ? (
+    if (id === 'calculator') return (state.preferences.showCalculator || request || catalogPreview) ? (
       <WidgetFrame key={id} id={id} label="快速计算" size={workspace.layout.widgets[id]} editing={layoutEditing} onChange={(next) => updateCurrentWidget(id, next)} {...dragProps}>
         <CalculatorCard />
       </WidgetFrame>
     ) : null;
 
-    if (id === 'worldClock') return state.preferences.showWorldClock ? (
+    if (id === 'worldClock') return (state.preferences.showWorldClock || request || catalogPreview) ? (
       <WidgetFrame key={id} id={id} label="世界时钟" size={workspace.layout.widgets[id]} editing={layoutEditing} onChange={(next) => updateCurrentWidget(id, next)} {...dragProps}>
         <WorldClockCard now={now} selectedZoneIds={state.preferences.worldClockZones} limit={widgetItemLimit(workspace.layout.widgets[id].height, 2, 3, 5)} onConfigure={() => setWorldClockSettingsOpen(true)} />
       </WidgetFrame>
     ) : null;
 
-    if (id === 'dailyOverview') return state.preferences.showDailyOverview ? (
+    if (id === 'dailyOverview') return (state.preferences.showDailyOverview || request || catalogPreview) ? (
       <WidgetFrame key={id} id={id} label="今日概览" size={workspace.layout.widgets[id]} editing={layoutEditing} onChange={(next) => updateCurrentWidget(id, next)} {...dragProps}>
         {renderDailyOverviewCard()}
       </WidgetFrame>
     ) : null;
 
-    if (id === 'weather') return state.preferences.showWeather ? (
+    if (id === 'weather') return (state.preferences.showWeather || request || catalogPreview) ? (
       <WidgetFrame key={id} id={id} label="天气" size={workspace.layout.widgets[id]} editing={layoutEditing} onChange={(next) => updateCurrentWidget(id, next)} {...dragProps}>
         <WeatherCard />
       </WidgetFrame>
     ) : null;
 
-    if (id === 'clipboard') return state.preferences.showClipboard ? (
+    if (id === 'clipboard') return (state.preferences.showClipboard || request || catalogPreview) ? (
       <WidgetFrame key={id} id={id} label="剪贴板" size={workspace.layout.widgets[id]} editing={layoutEditing} onChange={(next) => updateCurrentWidget(id, next)} {...dragProps}>
         <ClipboardCard now={now} limit={widgetItemLimit(workspace.layout.widgets[id].height, 1, 3, 6)} />
       </WidgetFrame>
     ) : null;
 
-    if (id === 'countdown') return state.preferences.showCountdown ? (
+    if (id === 'countdown') return (state.preferences.showCountdown || request || catalogPreview) ? (
       <WidgetFrame key={id} id={id} label="倒数日" size={workspace.layout.widgets[id]} editing={layoutEditing} onChange={(next) => updateCurrentWidget(id, next)} {...dragProps}>
         <CountdownCard events={state.timeEvents} now={now} limit={widgetItemLimit(workspace.layout.widgets[id].height, 1, 3, 6)} onAdd={() => openTimeEventModal()} onEdit={openTimeEventModal} />
       </WidgetFrame>
@@ -2355,15 +2468,41 @@ function App() {
     return null;
   }
 
+  function renderIconWidgetStrip() {
+    return <IconWidgetRail key={workspace.id} count={displayedRailWidgetOrder.length} onConfigure={() => openSettings('components')} dragging={Boolean(draggingWidgetId)}>
+      {displayedRailWidgetOrder.map((id) => renderRailWidget(id))}
+      {!displayedRailWidgetOrder.length && <button className="icon-widget-empty" type="button" onClick={() => openSettings('components')}><Plus aria-hidden="true" />添加一个组件</button>}
+    </IconWidgetRail>;
+  }
+
+  function backgroundForTarget(target: string) {
+    return target.startsWith('group:') ? workspace.categoryBackgrounds?.[target.slice(6)] : workspace.layout.widgets[target.slice(7) as DeskWidgetId]?.background;
+  }
+
+  function saveBlockBackground(target: string, background?: BlockBackground): string | undefined {
+    const old = backgroundForTarget(target);
+    if (background?.image && blockImageLength(state) - (old?.image?.length || 0) + background.image.length > MAX_BLOCK_IMAGES_LENGTH) return '区块图片已较多，请先移除一张再添加';
+    updateWorkspace((current) => {
+      if (!target.startsWith('group:')) return { ...current, layout: updateWidgetSize(current.layout, target.slice(7) as DeskWidgetId, { background }) };
+      const category = target.slice(6);
+      const categoryBackgrounds = { ...current.categoryBackgrounds };
+      if (background) return { ...current, categoryBackgrounds: { ...categoryBackgrounds, [category]: background } };
+      else delete categoryBackgrounds[category];
+      return { ...current, categoryBackgrounds };
+    });
+    return undefined;
+  }
+
   return (
-    <div className={`desk-app theme-${state.preferences.scene}`}>
+    <div className={`desk-app theme-${state.preferences.scene}${activeBackground ? ' has-custom-wallpaper' : ''}`}>
+      {appearanceCanvasPreview && <div className="appearance-canvas-actions" role="region" aria-label="外观预览"><span>预览外观</span><button autoFocus type="button" className="quiet-button" onClick={() => { setAppearanceCanvasPreview(false); setSettingsView('appearance'); setSettingsOpen(true); }}>继续调整</button><button type="button" className="quiet-button" onClick={cancelAppearanceDraft}>取消</button><button type="button" className="primary-small-button" onClick={applyAppearanceDraft}>应用外观</button></div>}
       <SceneBackdrop
         scene={state.preferences.scene}
-        motion={state.preferences.sceneMotion}
-        customBackground={state.preferences.customBackground}
+        motion={state.preferences.sceneMotion && !activeBackground}
+        customBackground={activeBackground}
       />
 
-      <div className={`desktop-content${isLocked ? ' is-locked' : ''}${layoutEditing ? ' layout-mode-active' : ''}`}>
+      <div inert={appearanceCanvasPreview || undefined} className={`desktop-content${isLocked ? ' is-locked' : ''}${layoutEditing ? ' layout-mode-active' : ''}${navigationMode ? ' navigation-mode' : ''}${iconMode ? ' icon-mode' : ''}${state.preferences.minimalMode ? ' minimal-mode' : ''}`}>
 
       <header className="desk-header">
         <a className="brand" href={deskHomeURL()} aria-label="微言桌面首页">
@@ -2414,7 +2553,7 @@ function App() {
           <div className="app-switcher-wrap">
             <button
               ref={appSwitcherTriggerRef}
-              className={`icon-button${switcherOpen ? ' active' : ''}`}
+              className={`text-button favorite-header-button${switcherOpen ? ' active' : ''}`}
               type="button"
               onClick={() => { setSwitcherOpen((value) => !value); setWorkspaceMenuOpen(false); setAccountMenuOpen(false); }}
               onKeyDown={(event) => {
@@ -2429,24 +2568,17 @@ function App() {
                   items[focusLast ? items.length - 1 : 0]?.focus();
                 });
               }}
-              aria-label="微言应用"
+              aria-label="常用分组"
+              title="常用分组"
               aria-expanded={switcherOpen}
-              aria-haspopup="menu"
+              aria-haspopup="dialog"
               aria-controls="appSwitcherMenu"
             >
-              <Grid3X3 aria-hidden="true" />
+              <Grid3X3 aria-hidden="true" /><span>常用</span>
             </button>
             {switcherOpen && (
-              <div ref={appSwitcherPopoverRef} id="appSwitcherMenu" className="app-switcher" role="menu" aria-label="微言应用" onKeyDown={(event) => handlePopoverNavigation(event, appSwitcherPopoverRef.current)}>
-                <div className="popover-heading"><strong>微言应用</strong><a href="https://wyanhub.com" target="_blank" rel="noreferrer" role="menuitem">WyanHub <ChevronRight /></a></div>
-                <div className="switcher-grid">
-                  {wyanProducts.slice(1, 7).map((product) => (
-                    <a key={product.id} href={product.url} target="_blank" rel="noreferrer" role="menuitem">
-                      <span style={{ '--shortcut-color': product.accent } as React.CSSProperties}>{product.icon}</span>
-                      <small>{product.title.replace('微言', '')}</small>
-                    </a>
-                  ))}
-                </div>
+              <div ref={appSwitcherPopoverRef} id="appSwitcherMenu" className="app-switcher" role="dialog" aria-label="常用分组" onKeyDown={(event) => handlePopoverNavigation(event, appSwitcherPopoverRef.current)}>
+                <FavoriteMenu groups={state.favoriteGroups} selectedId={activeFavoriteGroupId} onSelect={setActiveFavoriteGroupId} onManage={() => openFavorites()} onAdd={() => openFavorites('add')} />
               </div>
             )}
           </div>
@@ -2462,8 +2594,9 @@ function App() {
             <Sparkles aria-hidden="true" /><span>助手</span>
           </button>
           {state.inbox.length > 0 && <button className="icon-button inbox-trigger" type="button" onClick={() => openInbox()} aria-label={`收集箱，${state.inbox.length} 条待整理`} title="收集箱"><Inbox aria-hidden="true" /><span>{Math.min(state.inbox.length, 99)}</span></button>}
-          <SlowMessages userKey={isLocked ? null : deskSync.user?.userId ?? null} />
-          <button className={`text-button layout-header-button${layoutEditing ? ' active' : ''}`} type="button" onClick={() => layoutEditing ? setLayoutEditing(false) : enterLayoutEditing()} aria-label={layoutEditing ? '完成桌面布局调整' : '调整桌面布局和组件顺序'} aria-pressed={layoutEditing} title={layoutEditing ? '完成布局调整' : '调整桌面布局和组件顺序'}><AppWindow aria-hidden="true" /><span>{layoutEditing ? '完成布局' : '调整布局'}</span></button>
+          <a className="text-button header-link desk-together-entry" href="https://together.wyanhub.com/" target="_blank" rel="noopener noreferrer" aria-label="打开小伴清单（新标签页）" title="小伴清单 · 和亲友一起办事（新标签页打开）"><ListChecks size={18} aria-hidden="true" /><span>小伴清单</span></a>
+          <a className="text-button header-link desk-tools-entry" href="https://tools.wyanhub.com/tools" target="_blank" rel="noopener noreferrer" aria-label="打开微言工具箱（新标签页）" title="小工具（新标签页打开）"><Wrench size={18} aria-hidden="true" /><span>小工具</span></a>
+          <DesktopModeMenu value={currentDesktopMode(state)} onChange={chooseDesktopMode} onComponents={() => openSettings('components')} onWallpaper={() => openSettings('appearance')} onBackgrounds={() => setBackgroundTarget(`group:${workspace.categories[0]}`)} />
           <div className="account-menu-wrap">
             <button
               ref={accountTriggerRef}
@@ -2502,6 +2635,7 @@ function App() {
                 </button>
                 <button type="button" role="menuitem" onClick={() => lockDesktop(true)}><Lock aria-hidden="true" /><span><strong>锁定桌面</strong><small>临时隐藏当前桌面内容</small></span></button>
                 <button type="button" role="menuitem" onClick={() => openSettings()}><Settings aria-hidden="true" /><span><strong>桌面设置</strong><small>外观、组件与数据</small></span><ChevronRight aria-hidden="true" /></button>
+                {!extensionRuntime && <button type="button" role="menuitem" onClick={() => openSettings()}><Download aria-hidden="true" /><span><strong>安装与扩展</strong><small>添加到桌面或设为新标签页</small></span><ChevronRight aria-hidden="true" /></button>}
                 {deskSync.user && (
                   <button
                     className="account-logout-button"
@@ -2524,40 +2658,16 @@ function App() {
       <main className="desk-main">
         <section className="welcome" aria-labelledby="welcomeTitle">
           <p>{dateLabel}</p>
-          <h1 id="welcomeTitle"><time>{timeLabel}</time><span>{greeting(now.getHours())}</span></h1>
-          <form
-            className="desk-search"
-            onSubmit={submitSearch}
-            onFocus={() => setSearchFocused(true)}
-            onBlur={(event) => {
-              if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setSearchFocused(false);
-            }}
-            role="search"
-          >
-            <Search aria-hidden="true" />
-            <input ref={searchInputRef} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索网站或输入关键词" aria-label="搜索网站或网页" />
-            {query && <button type="button" onClick={() => setQuery('')} aria-label="清空搜索"><X /></button>}
-            <button className="command-trigger" type="button" onClick={() => { setCommandInitialQuery(query); setCommandOpen(true); }} aria-label="搜索全部桌面内容"><Command /><span>全部内容</span></button>
-            {showRecentSearchSuggestions && (
-              <section className="search-recent-suggestions" aria-label="最近使用的网站">
-                <div className="search-recent-label"><History aria-hidden="true" /><span>最近打开</span></div>
-                <div className="search-recent-list">
-                  {recentSearchSuggestions.map((shortcut) => (
-                    <button key={shortcut.id} type="button" onClick={() => { openShortcut(shortcut); setSearchFocused(false); }} title={shortcut.title}>
-                      <span style={{ '--shortcut-color': shortcut.accent } as React.CSSProperties}>{shortcut.icon}</span><small>{shortcut.title}</small>
-                    </button>
-                  ))}
-                </div>
-              </section>
-            )}
-          </form>
+          <h1 id="welcomeTitle"><button className="clock-view-toggle" type="button" onClick={toggleMinimalMode} aria-label={`${timeLabel}，${state.preferences.minimalMode ? '显示完整桌面' : '切换极简模式'}`} aria-pressed={state.preferences.minimalMode} title={state.preferences.minimalMode ? '显示完整桌面' : '极简模式'}><time>{timeLabel}</time></button><span>{greeting(now.getHours())}</span></h1>
+          <DesktopSearch query={query} engine={state.preferences.searchEngine} shortcuts={visibleShortcuts} widgets={searchableWidgets}
+            recent={state.preferences.showRecent ? recentSearchSuggestions : []} inputRef={searchInputRef}
+            onQuery={setQuery} onEngine={(searchEngine) => updatePreferences({ searchEngine })}
+            onOpen={(action) => { if (action.kind === 'widget') openWidget(action.widget.id); else if (action.shortcut) openShortcut(action.shortcut); else openExternal(action.url); }}
+            onAllContent={() => { setCommandInitialQuery(query); setCommandOpen(true); }} />
+          {!state.preferences.minimalMode && state.preferences.showTimeEvents && state.timeEvents.length > 0 && <TimeEventsStrip events={state.timeEvents} now={now} onAdd={() => openTimeEventModal()} onEdit={openTimeEventModal} />}
         </section>
 
         <div className="desk-layout" data-rail-width={workspace.layout.railWidth} data-mobile-priority={state.preferences.mobileLayoutPriority}>
-          <div className="mobile-today-shell">
-            {state.preferences.showDailyOverview && renderDailyOverviewCard()}
-          </div>
-
           <section className="mobile-capture-strip glass-panel" aria-label="快速记录与同步">
             <div className="mobile-capture-heading">
               <span><Inbox aria-hidden="true" /><strong>快速记录</strong></span>
@@ -2572,20 +2682,19 @@ function App() {
             </div>
           </section>
 
+          {iconMode && renderIconWidgetStrip()}
           <div className="desk-primary">
-          {extensionRuntime && <ContinueWorkCard workspaceName={workspace.name} />}
           {state.inbox.some((item) => item.kind === 'link' && !item.readAt) && <section className="reading-strip glass-panel" aria-label="稍后阅读"><BookMarked aria-hidden="true" /><strong>稍后阅读</strong><span>{state.inbox.filter((item) => item.kind === 'link' && !item.readAt).length} 条未读</span><button className="quiet-button" type="button" onClick={() => openInbox('link')}>继续阅读<ChevronRight aria-hidden="true" /></button></section>}
-          {state.preferences.showTimeEvents && state.timeEvents.length > 0 && (
-            <TimeEventsStrip events={state.timeEvents} now={now} onAdd={() => openTimeEventModal()} onEdit={openTimeEventModal} />
-          )}
           <WidgetFrame id="shortcuts" label="快捷网站" size={workspace.layout.widgets.shortcuts} editing={layoutEditing} allowWide={false} onChange={(next) => updateCurrentWidget('shortcuts', next)}>
-          <section className="shortcut-section glass-panel" aria-labelledby="shortcutsTitle">
+          <section className={`shortcut-section glass-panel${workspace.shortcutStyle === 'icons' && !query ? ' icon-desktop-section' : ''}`} aria-labelledby="shortcutsTitle">
             <div className="panel-heading shortcut-heading">
               <div>
-                <h2 id="shortcutsTitle">{query ? '搜索结果' : '快捷网站'}</h2>
-                <span>{query ? `${visibleShortcuts.length} 个匹配` : `${visibleShortcuts.length} 个网站`}</span>
+                <h2 id="shortcutsTitle">{query ? '搜索结果' : workspace.shortcutStyle === 'icons' ? '快捷网址' : '快捷网站'}</h2>
+                {(query || workspace.shortcutStyle !== 'icons') && <span>{query ? `${visibleShortcuts.length} 个匹配` : `${visibleShortcuts.length} 个网站`}</span>}
               </div>
               <div className="heading-actions">
+                {!query && !iconMode && <div className="shortcut-style-control" role="group" aria-label="网站展示风格"><button type="button" aria-pressed={true} onClick={() => updateWorkspace((current) => ({ ...current, shortcutStyle: 'cards' }))}>卡片</button><button type="button" aria-pressed={false} onClick={() => chooseDesktopMode('icons')}>图标</button></div>}
+                {!query && iconMode && workspace.categories.length > 4 && <button className="quiet-button icon-groups-toggle" type="button" aria-expanded={allIconGroups} onClick={() => setAllIconGroups(!allIconGroups)}><ChevronDown aria-hidden="true" />{allIconGroups ? '收起分组' : `全部分组 · ${workspace.categories.length}`}</button>}
                 <div className="shortcut-groups-wrap">
                   <button
                     ref={shortcutGroupsTriggerRef}
@@ -2631,7 +2740,7 @@ function App() {
                                   if (openShortcutGroup(group)) setShortcutGroupsMenuOpen(false);
                                 }}
                               >
-                                <FolderOpen aria-hidden="true" />
+                                <WebsitePreview shortcuts={workspace.shortcuts.filter((site) => group.shortcutIds.includes(site.id))} />
                                 <span className="shortcut-group-launch-copy"><strong>{group.title}</strong><small>{count ? `${count} 个网站` : '需要先选择网站'}</small></span>
                                 <span className="shortcut-group-launch-action"><Play aria-hidden="true" />打开全部</span>
                               </button>
@@ -2677,6 +2786,7 @@ function App() {
                     <div ref={shortcutManagePopoverRef} id="shortcutManageMenu" className="shortcut-manage-menu" role="menu" aria-label="管理快捷网站" onKeyDown={(event) => handlePopoverNavigation(event, shortcutManagePopoverRef.current)}>
                       <button type="button" role="menuitem" onClick={() => { setShortcutManageMenuOpen(false); openShortcutManager(); }}><Pencil aria-hidden="true" /><span><strong>管理网站</strong><small>编辑、排序或移动网站</small></span></button>
                       <button type="button" role="menuitem" onClick={() => { setShortcutManageMenuOpen(false); setCategoryModalOpen(true); }}><Grid3X3 aria-hidden="true" /><span><strong>管理分类</strong><small>新增、排序或整理分类</small></span></button>
+                      {workspace.shortcutStyle === 'icons' && <button type="button" role="menuitem" onClick={() => { setShortcutManageMenuOpen(false); setShortcutGroupManagerOpen(true); }}><FolderOpen aria-hidden="true" /><span><strong>网站组合</strong><small>选择一组网站，需要时一起打开</small></span></button>}
                       <button type="button" role="menuitem" onClick={() => openSettings('data')}><BookMarked aria-hidden="true" /><span><strong>导入书签</strong><small>从浏览器迁移常用网站</small></span></button>
                     </div>
                   )}
@@ -2685,6 +2795,7 @@ function App() {
               </div>
             </div>
 
+            {workspace.shortcutStyle === 'icons' && !query ? <IconDesktop key={workspace.id} workspace={workspace} showAllGroups={allIconGroups} onContextMenu={(item, position) => { setCategoryContextMenu(null); setShortcutContextMenu({ shortcutId: item.id, ...position }); }} onCategoryContextMenu={(category, position) => { setShortcutContextMenu(null); setCategoryContextMenu({ category, ...position }); }} onBackground={(category) => setBackgroundTarget(`group:${category}`)} onOpen={recordShortcut} onPlaceSite={(id, category, beforeId) => updateWorkspace((current) => placeDesktopShortcut(current, id, category, beforeId))} onPlaceCategory={(category, before) => updateWorkspace((current) => placeDesktopCategory(current, category, before))} onMoveSite={reorderShortcut} onMoveCategory={reorderCategory} onAdd={(category) => { openShortcutModal(); setShortcutDraft((current) => ({ ...current, category })); }} /> : <>
             {!query && (
               <div ref={categoryNavigationRef} className="category-navigation">
                 <div className="category-tabs" role="tablist" aria-label="常用网站分类">
@@ -2694,6 +2805,7 @@ function App() {
                       className={category === activeCategory ? 'active' : ''}
                       type="button"
                       role="tab"
+                      title={workspace.shortcuts.filter((site) => site.category === category).map((site) => site.title).slice(0, 6).join('、') || '空分类'}
                       aria-selected={category === activeCategory}
                       onClick={() => { setCategoryContextMenu(null); setActiveCategory(category); }}
                       onContextMenu={(event) => {
@@ -2708,7 +2820,7 @@ function App() {
                         });
                       }}
                     >
-                      {category}
+                      {categoryContent(category)}
                     </button>
                   ))}
                 </div>
@@ -2737,7 +2849,7 @@ function App() {
                 <div className="category-navigation-measure" aria-hidden="true">
                   <div ref={categoryMeasureRef} className="category-tabs">
                     {categories.slice(0, MAX_VISIBLE_SHORTCUT_CATEGORIES).map((category) => (
-                      <button key={category} className={category === activeCategory ? 'active' : ''} type="button" tabIndex={-1}>{category}</button>
+                      <button key={category} className={category === activeCategory ? 'active' : ''} type="button" tabIndex={-1}>{categoryContent(category)}</button>
                     ))}
                   </div>
                   <span ref={categoryMoreMeasureRef} className="category-overflow-select active">
@@ -2749,7 +2861,7 @@ function App() {
 
             {visibleShortcuts.length ? (
               <>
-                <div className={`shortcut-grid${state.preferences.compactShortcuts ? ' compact-grid' : ''}`}>
+                <div className={`shortcut-grid${state.preferences.compactShortcuts ? ' compact-grid' : ''}`} data-shortcut-count={displayedShortcuts.length}>
                   {displayedShortcuts.map((shortcut) => (
                     <ShortcutCard key={shortcut.id} shortcut={shortcut} compact={state.preferences.compactShortcuts} onOpen={recordShortcut} onContextMenu={(item, position) => { setCategoryContextMenu(null); setShortcutContextMenu({ shortcutId: item.id, ...position }); }} />
                   ))}
@@ -2765,23 +2877,24 @@ function App() {
                 )}
               </>
             ) : query ? (
-              <div className="empty-state"><Search aria-hidden="true" /><strong>没有匹配的网站</strong><span>按回车使用{state.preferences.searchEngine === 'baidu' ? '百度' : '必应'}搜索</span></div>
+              <div className="empty-state"><Search aria-hidden="true" /><strong>没有匹配的网站</strong></div>
             ) : (
               <div className="empty-state"><Grid3X3 aria-hidden="true" /><strong>这个分类还没有网站</strong><span>点击“添加”，把常用网站放进来</span></div>
             )}
+            </>}
           </section>
           </WidgetFrame>
           </div>
 
-          <aside className={`today-rail${draggingWidgetId ? ' is-widget-dragging' : ''}`} aria-label="今日工作区">
-            {displayedRailWidgetOrder.map(renderRailWidget)}
-          </aside>
+          {!navigationMode && !iconMode && <aside className={`today-rail${draggingWidgetId ? ' is-widget-dragging' : ''}`} aria-label="今日工作区">{displayedRailWidgetOrder.map((id) => renderRailWidget(id))}</aside>}
         </div>
+        {widgetPreviewRequest?.workspaceId === workspace.id && (navigationMode || !visibleRailWidgetOrder.includes(widgetPreviewRequest.widgetId)) && renderRailWidget(widgetPreviewRequest.widgetId, true)}
       </main>
 
       {layoutEditing && (
         <div className="layout-mode-bar" role="toolbar" aria-label="布局调整">
           <span className="layout-mode-title"><AppWindow aria-hidden="true" /><span><strong>调整“{workspace.name}”布局</strong><small>拖动卡片顶部排序，手机端保持单列</small></span></span>
+          <span className="layout-balance-control desktop-mode-switch" role="group" aria-label="桌面模式"><button type="button" className={!navigationMode && !iconMode ? 'active' : ''} aria-pressed={!navigationMode && !iconMode} onClick={() => setDesktopViewMode('work')}>卡片桌面</button><button type="button" className={iconMode ? 'active' : ''} aria-pressed={iconMode} onClick={() => setDesktopViewMode('icons')}>图标桌面</button><button type="button" className={navigationMode ? 'active' : ''} aria-pressed={navigationMode} onClick={() => setDesktopViewMode('navigation')}>轻导航</button></span>
           <span className="layout-balance-control" role="group" aria-label="主区域宽度">
             {([
               ['sites', '网站优先'],
@@ -2816,6 +2929,7 @@ function App() {
           onMove={moveShortcutCategory}
           onOpen={openShortcut}
           onToggleGroup={toggleShortcutInGroup}
+          onCopyFavorite={(shortcut) => openFavorites('copy', shortcut)}
         />
       )}
 
@@ -2846,6 +2960,7 @@ function App() {
             <div ref={settingsScrollRef} className="settings-scroll">
               {settingsView === 'home' && (
                 <div className="settings-home">
+                  {pwa.installMode !== 'unavailable' && <PwaInstallCard installMode={pwa.installMode} offlineReady={pwa.offlineReady} registrationError={pwa.registrationError} updateAvailable={pwa.updateAvailable} updateBusy={pwa.updateBusy} onInstall={() => void installDeskApp()} onUpdate={pwa.applyUpdate} />}
                   <BrowserExtensionInstallCard installed={extensionRuntime} version={appVersion} />
                   <nav className="settings-navigation" aria-label="设置分类">
                     <SettingsNavigationItem autoFocus icon={<Palette />} title="外观与桌面" description="背景、搜索与网站密度" summary={`${settingsSceneLabel} · ${state.preferences.searchEngine === 'baidu' ? '百度' : '必应'}`} onClick={() => setSettingsView('appearance')} />
@@ -2862,20 +2977,25 @@ function App() {
               {settingsView === 'appearance' && (
                 <div className="settings-page">
                   <section className="settings-section">
+                    <AppearanceStudio value={appearanceSelection} activePreset={appearancePreset} dirty={Boolean(appearanceDraft)} canRestore={Boolean(appearanceRestore)} now={now}
+                      uploadControl={<label className={`upload-background${state.preferences.customBackground ? ' active' : ''}`}>
+                        <input type="file" accept="image/*" aria-label="上传自己的壁纸" onChange={uploadBackground} />
+                        <ImagePlus /><span><strong>上传自己的壁纸</strong><small>JPG、PNG 或 WebP，小于 1.5 MB</small></span><Upload />
+                      </label>}
+                      onPreset={(id) => { setAppearancePreset(id); setAppearanceDraft(selectAppearancePreset(savedState, id)); }}
+                      onChange={setAppearanceDraft} onInspect={() => { setAppearanceDraft((current) => current || captureAppearance(savedState)); setAppearanceCanvasPreview(true); setSettingsOpen(false); }}
+                      onApply={applyAppearanceDraft} onCancel={cancelAppearanceDraft} onRestore={restoreAppearance} />
                     <div className="settings-title"><Palette /><div><strong>环境风格</strong><small>场景位于内容底层</small></div></div>
-                    <div className="scene-options">
+                    <div className="scene-options" role="group" aria-label="环境风格">
                       {sceneOptions.map((scene) => (
-                        <button key={scene.id} className={`scene-option preview-${scene.id}${state.preferences.scene === scene.id && !state.preferences.customBackground ? ' active' : ''}`} type="button" onClick={() => selectScene(scene.id)}>
-                          <span className="scene-preview"><i /><b /></span>
+                        <button key={scene.id} className={`scene-option preview-${scene.id}${state.preferences.scene === scene.id && !activeBackground ? ' active' : ''}`} type="button" aria-pressed={state.preferences.scene === scene.id && !activeBackground} onClick={() => selectScene(scene.id)}>
+                          <span className="scene-preview" aria-hidden="true"><i /><b /></span>
                           <span><strong>{scene.name}</strong><small>{scene.description}</small></span>
-                          {state.preferences.scene === scene.id && !state.preferences.customBackground && <Check />}
+                          {state.preferences.scene === scene.id && !activeBackground && <Check aria-hidden="true" />}
                         </button>
                       ))}
                     </div>
-                    <label className={`upload-background${state.preferences.customBackground ? ' active' : ''}`}>
-                      <input type="file" accept="image/*" onChange={uploadBackground} />
-                      <ImagePlus /><span><strong>自定义背景</strong><small>JPG、PNG 或 WebP，小于 1.5 MB</small></span><Upload />
-                    </label>
+                    <button className="full-quiet-button" type="button" onClick={() => { setSettingsOpen(false); setBackgroundTarget(`group:${workspace.categories[0]}`); }}><Palette aria-hidden="true" />分组与组件背景</button>
                     {state.preferences.customBackground && <button className="full-quiet-button" type="button" onClick={() => updatePreferences({ customBackground: '' })}>移除自定义背景</button>}
                     <SettingToggle label="环境动效" description="慢速光影与立体层次" checked={state.preferences.sceneMotion} onChange={(checked) => updatePreferences({ sceneMotion: checked })} />
                   </section>
@@ -2895,19 +3015,13 @@ function App() {
               {settingsView === 'components' && (
                 <div className="settings-page">
                   <section className="settings-section">
-                    <div className="settings-title"><AppWindow /><div><strong>桌面布局</strong><small>在桌面直接拖动和调整尺寸</small></div></div>
-                    <button className="layout-edit-trigger" type="button" onClick={enterLayoutEditing}><AppWindow aria-hidden="true" /><span><strong>进入布局调整</strong><small>宽度、高度与主区域比例</small></span><ChevronRight aria-hidden="true" /></button>
-                    <div className="mobile-layout-setting">
-                      <span><Smartphone aria-hidden="true" /><span><strong>手机端首页顺序</strong><small>快捷网站默认只展示 4 个，其余可展开</small></span></span>
-                      <div className="segmented-control mobile-priority-control" role="group" aria-label="手机端首页顺序">
-                        <button className={state.preferences.mobileLayoutPriority === 'tasks' ? 'active' : ''} type="button" aria-pressed={state.preferences.mobileLayoutPriority === 'tasks'} onClick={() => updatePreferences({ mobileLayoutPriority: 'tasks' })}>任务优先</button>
-                        <button className={state.preferences.mobileLayoutPriority === 'sites' ? 'active' : ''} type="button" aria-pressed={state.preferences.mobileLayoutPriority === 'sites'} onClick={() => updatePreferences({ mobileLayoutPriority: 'sites' })}>网站优先</button>
-                      </div>
-                    </div>
-                  </section>
-                  <section className="settings-section">
-                    <div className="component-settings-heading"><strong>右侧工作区</strong><small>隐藏不会删除数据</small></div>
-                    <div className="component-settings-grid">
+                    <div className="component-settings-heading"><strong>桌面组件</strong><small>图标或卡片桌面中显示，隐藏不删除数据</small></div>
+                    <WidgetGallery items={workspace.layout.widgetOrder.map((id) => { const item = searchableWidgets.find((entry) => entry.id === id)!; return { ...item, enabled: railComponentControls[id].checked }; })}
+                      addLabel={navigationMode || state.preferences.minimalMode ? '添加到图标桌面' : '添加到桌面'} background={activeBackground}
+                      renderPreview={(id) => renderRailWidget(id, false, true)}
+                      onTry={(id) => { setSettingsOpen(false); openWidget(id); }}
+                      onToggle={(id, enabled) => { railComponentControls[id].onChange(enabled); if (enabled && (navigationMode || state.preferences.minimalMode)) chooseDesktopMode('icons'); notify(enabled ? '已添加到桌面' : '已隐藏组件，内容保留'); }} />
+                    <details className="component-advanced"><summary>排序与更多设置</summary><div className="component-settings-grid">
                       {workspace.layout.widgetOrder.map((id, index) => {
                         const item = railComponentControls[id];
                         return (
@@ -2916,7 +3030,10 @@ function App() {
                             label={item.label}
                             description={item.description}
                             checked={item.checked}
-                            onChange={item.onChange}
+                            onChange={(checked) => {
+                              item.onChange(checked);
+                              if (checked && (navigationMode || state.preferences.minimalMode)) chooseDesktopMode(iconMode ? 'icons' : 'work');
+                            }}
                             onMoveUp={() => moveCurrentRailWidget(id, -1)}
                             onMoveDown={() => moveCurrentRailWidget(id, 1)}
                             moveUpDisabled={index === 0}
@@ -2931,6 +3048,18 @@ function App() {
                           />
                         );
                       })}
+                    </div></details>
+                  </section>
+                  <section className="settings-section">
+                    <div className="settings-title"><AppWindow /><div><strong>桌面布局</strong><small>在桌面直接拖动和调整尺寸</small></div></div>
+                    <DesktopModePicker value={currentDesktopMode(state)} onChange={chooseDesktopMode} />
+                    <button className="layout-edit-trigger" type="button" onClick={enterLayoutEditing}><AppWindow aria-hidden="true" /><span><strong>进入布局调整</strong><small>宽度、高度与主区域比例</small></span><ChevronRight aria-hidden="true" /></button>
+                    <div className="mobile-layout-setting">
+                      <span><Smartphone aria-hidden="true" /><span><strong>手机端首页顺序</strong><small>快捷网站默认只展示 4 个，其余可展开</small></span></span>
+                      <div className="segmented-control mobile-priority-control" role="group" aria-label="手机端首页顺序">
+                        <button className={state.preferences.mobileLayoutPriority === 'tasks' ? 'active' : ''} type="button" aria-pressed={state.preferences.mobileLayoutPriority === 'tasks'} onClick={() => updatePreferences({ mobileLayoutPriority: 'tasks' })}>任务优先</button>
+                        <button className={state.preferences.mobileLayoutPriority === 'sites' ? 'active' : ''} type="button" aria-pressed={state.preferences.mobileLayoutPriority === 'sites'} onClick={() => updatePreferences({ mobileLayoutPriority: 'sites' })}>网站优先</button>
+                      </div>
                     </div>
                   </section>
                   <section className="settings-section">
@@ -3047,7 +3176,6 @@ function App() {
                   <section className="settings-section">
                     <div className="settings-title"><Wrench /><div><strong>应用与操作</strong><small>按需要使用的辅助功能</small></div></div>
                     <div className="settings-tool-grid">
-                      {pwa.installMode !== 'unavailable' && <PwaInstallCard installMode={pwa.installMode} offlineReady={pwa.offlineReady} registrationError={pwa.registrationError} updateAvailable={pwa.updateAvailable} updateBusy={pwa.updateBusy} onInstall={() => void installDeskApp()} onUpdate={pwa.applyUpdate} />}
                       <article className="settings-tool-card"><div className="settings-tool-heading"><span><Keyboard /></span><div><strong>键盘操作</strong><small>搜索、命令与弹层</small></div></div><div className="settings-tool-actions single"><button type="button" onClick={() => setKeyboardHelpOpen(true)}>查看快捷键</button></div></article>
                     </div>
                   </section>
@@ -3063,6 +3191,7 @@ function App() {
                   <section className="settings-section settings-section-leading about-section">
                     <div className="about-summary"><span>W</span><span><strong>微言桌面 WyanDesk</strong><small>v{appVersion} · 本地优先，安静好用</small></span></div>
                     <div className="about-actions">
+                      <a href="https://desk.wyanhub.com/about.html" target="_blank" rel="noopener noreferrer"><Info />产品介绍</a>
                       <button type="button" onClick={() => { setSettingsOpen(false); setOnboardingOpen(true); }}><CircleHelp />使用指南</button>
                       <button type="button" onClick={() => { setSettingsOpen(false); setTrustPanel('privacy'); }}><ShieldCheck />隐私说明</button>
                       <button type="button" onClick={() => { setSettingsOpen(false); setTrustPanel('terms'); }}><FileText />用户协议</button>
@@ -3077,18 +3206,19 @@ function App() {
         </ManagedLayer>
       )}
 
+      {backgroundTarget && <BlockBackgroundEditor key={workspace.id + backgroundTarget} initialTarget={backgroundTarget} targets={[...workspace.categories.map((category) => ({ value: `group:${category}`, label: `${category}分组` })), ...Object.entries(railComponentControls).map(([id, item]) => ({ value: `widget:${id}`, label: item.label })), { value: 'widget:shortcuts', label: '快捷网站卡片' }]} getBackground={backgroundForTarget} onSave={saveBlockBackground} onClose={() => setBackgroundTarget(null)} onRecommend={() => { updateWorkspace((current) => ({ ...current, layout: withRecommendedWidgetBackgrounds(current.layout) })); setBackgroundTarget(null); notify('已应用组件推荐配色，可逐个修改'); }} />}
+
+      {websiteCatalogOpen && <WebsiteCatalog categories={categories} initialCategory={activeCategory} shortcuts={workspace.shortcuts} onAdd={addCatalogWebsite} onClose={() => setWebsiteCatalogOpen(false)} onCustom={() => { setWebsiteCatalogOpen(false); openShortcutModal(); }} />}
+
       {shortcutModalOpen && (
         <ManagedLayer className="modal-layer" onEscape={closeShortcutModal}>
           <button className="modal-backdrop" type="button" onClick={closeShortcutModal} aria-label="关闭" />
           <form className="shortcut-modal" onSubmit={saveShortcut} role="dialog" aria-modal="true" aria-labelledby="shortcutModalTitle">
-            <div className="modal-heading"><div><span className="modal-icon">{editingShortcutId ? <Pencil /> : <Sparkles />}</span><div><h2 id="shortcutModalTitle">{editingShortcutId ? '编辑快捷网站' : '添加快捷网站'}</h2><p>{editingShortcutId ? '可修改名称、网址和所在分类' : '保存到当前浏览器'}</p></div></div><button className="icon-button" type="button" onClick={closeShortcutModal} aria-label="关闭"><X /></button></div>
-            <div className="form-grid">
-              <label><span>网站名称</span><input autoFocus value={shortcutDraft.title} onChange={(event) => setShortcutDraft((current) => ({ ...current, title: event.target.value }))} placeholder="例如：项目文档" required /></label>
-              <label><span>网站地址</span><input value={shortcutDraft.url} onChange={(event) => setShortcutDraft((current) => ({ ...current, url: event.target.value }))} placeholder="https://example.com" required /></label>
+            <div className="modal-heading"><div><span className="modal-icon">{editingShortcutId ? <Pencil /> : <Plus />}</span><h2 id="shortcutModalTitle">{editingShortcutId ? '编辑网站' : '添加网站'}</h2></div><button className="icon-button" type="button" onClick={closeShortcutModal} aria-label="关闭"><X /></button></div>
+            <ShortcutFields value={shortcutDraft} editing={Boolean(editingShortcutId)} onChange={setShortcutDraft}>
               <label><span>分类</span><input list="shortcutCategories" maxLength={16} value={shortcutDraft.category} onChange={(event) => setShortcutDraft((current) => ({ ...current, category: event.target.value }))} required /><datalist id="shortcutCategories">{categories.map((category) => <option key={category} value={category} />)}</datalist></label>
-              <div className="split-fields"><label><span>图标文字</span><input maxLength={2} value={shortcutDraft.icon} onChange={(event) => setShortcutDraft((current) => ({ ...current, icon: event.target.value }))} placeholder="自动" /></label><label><span>图标颜色</span><input className="color-input" type="color" value={shortcutDraft.accent} onChange={(event) => setShortcutDraft((current) => ({ ...current, accent: event.target.value }))} /></label></div>
-            </div>
-            <div className="modal-actions"><button className="quiet-button" type="button" onClick={closeShortcutModal}>取消</button><button className="primary-button" type="submit">{editingShortcutId ? <Check /> : <Plus />}{editingShortcutId ? '保存修改' : '添加到桌面'}</button></div>
+            </ShortcutFields>
+            <div className="modal-actions shortcut-editor-actions">{!editingShortcutId && <button className="quiet-button" type="button" onClick={() => { closeShortcutModal(); setWebsiteCatalogOpen(true); }}><Grid3X3 />从网站目录选</button>}<button className="primary-button" type="submit">{editingShortcutId ? <Check /> : <Plus />}{editingShortcutId ? '保存修改' : '添加到桌面'}</button></div>
           </form>
         </ManagedLayer>
       )}
@@ -3114,8 +3244,19 @@ function App() {
           onDelete={removeShortcut}
           onEdit={openShortcutEditor}
           onMove={reorderShortcut}
+          onCopyFavorite={(shortcut) => openFavorites('copy', shortcut)}
         />
       )}
+
+      {favoriteManager && <FavoriteManager
+        groups={state.favoriteGroups}
+        shortcuts={workspace.shortcuts}
+        initialMode={favoriteManager.mode}
+        initialGroupId={activeFavoriteGroupId}
+        copyShortcut={favoriteManager.shortcut}
+        onChange={(favoriteGroups) => setState((current) => ({ ...current, favoriteGroups }))}
+        onClose={() => setFavoriteManager(null)}
+      />}
 
       {eventModalOpen && (
         <ManagedLayer className="modal-layer" onEscape={() => setEventModalOpen(false)}>
@@ -3234,7 +3375,7 @@ function App() {
 
       {inboxOpen && <InboxModal items={state.inbox} workspaces={state.workspaces} activeWorkspaceId={workspace.id} initialKind={inboxInitialKind} initialItemId={inboxInitialItemId} saveLabel={saveStatus === 'error' ? '本机保存失败，请先导出备份' : saveStatus === 'saving' ? '正在保存到本机…' : deskSync.user ? `本机已保存 · ${mobileSyncLabel}` : '已保存在本机，未登录账号'} onUpdate={(id, patch) => { setState((current) => ({ ...current, inbox: current.inbox.map((item) => item.id === id ? { ...item, ...patch } : item) })); }} onAdd={addInboxItem} onClose={() => setInboxOpen(false)} onDelete={removeInboxItem} onOrganize={organizeInboxItem} />}
 
-      {onboardingOpen && <OnboardingModal extensionInstalled={extensionRuntime} onComplete={completeOnboarding} onImportBookmarks={importBrowserBookmarks} onTemplate={applyOnboardingTemplate} />}
+      {onboardingOpen && <OnboardingModal extensionInstalled={extensionRuntime} mode={currentDesktopMode(state)} allowTemplates={onboardingTemplatesAvailable && !state.preferences.onboardingCompleted} onMode={chooseDesktopMode} onComplete={completeOnboarding} onImportBookmarks={importBrowserBookmarks} onTemplate={applyOnboardingTemplate} />}
 
       <CommandPalette open={commandOpen} initialQuery={commandInitialQuery} resources={commandResources} onLoadTabs={extensionRuntime ? loadSearchTabs : undefined} commands={deskCommands} shortcuts={commandShortcuts} currentWorkspaceId={workspace.id} getDynamicCommands={dynamicCommandsForQuery} onClose={() => { setCommandOpen(false); setCommandInitialQuery(''); }} onOpenShortcut={openCommandShortcut} />
 

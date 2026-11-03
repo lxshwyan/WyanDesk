@@ -1,0 +1,21 @@
+.focus-card .mini-heading > span { min-width: 0; flex: 1; }
+.focus-card .focus-widget-label { flex: 0 0 auto; white-space: nowrap; font: inherit; }
+.focus-card .focus-task-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 400; }
+.focus-cycle-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; margin-top: 8px; color: var(--muted-strong); font-size: var(--type-caption); }
+.focus-cycle-controls label { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+.focus-cycle-controls input { margin: 0; accent-color: var(--blue); }
+.focus-cycle-controls select { max-width: 76px; min-height: 28px; border: 0; border-radius: var(--radius-control); color: var(--muted-strong); background: var(--surface-item); font: inherit; }
+.focus-cycle-controls > span { margin-left: auto; font-variant-numeric: tabular-nums; }
+.focus-card.is-break .focus-ring { --blue: #287455; }
+.widget-floating-panel .focus-cycle-controls { margin-top: 16px; }
+@media (max-width:620px) {
+ .focus-cycle-controls label { min-height: 44px; }
+ .icon-mode .icon-widget-region .focus-card .mini-heading { margin-bottom: 0; }
+ .icon-mode .icon-widget-region .focus-card .focus-body { gap: 4px 10px; }
+ .icon-mode .icon-widget-region .focus-card .focus-cycle-controls { margin-top: 0; }
+ .focus-cycle-controls select { min-height: 44px; max-width: 90px; font-size: var(--type-title); }
+ .widget-floating-panel > .focus-card .focus-cycle-controls { margin-top: 8px; }
+ .widget-floating-panel > .focus-card .focus-body { row-gap: 10px; }
+ .widget-floating-panel > .focus-card .focus-presets { grid-template-columns: repeat(3,minmax(0,1fr)); }
+ .widget-floating-panel > .focus-card .focus-presets button, .widget-floating-panel > .focus-card .focus-buttons button { min-height: 44px; }
+}

@@ -3,6 +3,7 @@ import { Check, CheckCircle2, CircleAlert, FolderOpen, Info, Pencil, Play, Plus,
 import type { BatchOpenResult } from '../lib/externalWindows';
 import type { Shortcut, ShortcutGroup } from '../types';
 import { ManagedLayer } from './ManagedLayer';
+import { WebsitePreview } from './WebsiteIcon';
 
 interface ShortcutGroupManagerProps {
   groups: ShortcutGroup[];
@@ -76,7 +77,7 @@ export function ShortcutGroupManager({ groups, shortcuts, onClose, onDelete, onO
                 const count = group.shortcutIds.filter((id) => shortcuts.some((shortcut) => shortcut.id === id)).length;
                 return (
                   <div className="shortcut-group-row" key={group.id}>
-                    <span className="shortcut-group-icon"><FolderOpen /></span>
+                    <span className="shortcut-group-icon"><WebsitePreview shortcuts={shortcuts.filter((site) => group.shortcutIds.includes(site.id))} /></span>
                     <span className="shortcut-group-copy"><strong>{group.title}</strong><small>{count ? `${count} 个网站` : '需要重新选择网站'}</small></span>
                     <span className="shortcut-group-actions">
                       <button className="group-open-button" type="button" onClick={() => openGroup(group)} disabled={!count} aria-label={`打开${group.title}的全部网站`} title="打开全部网站"><Play /><span>打开全部</span></button>

@@ -2,5 +2,11 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://desk.wyanhub.com/</loc>
+    <!-- Use the homepage's actual change date, not the time of a routine build. -->
+    <lastmod>2026-11-02</lastmod>
+  </url>
+  <url>
+    <loc>https://desk.wyanhub.com/about.html</loc>
+    <lastmod>2026-11-02</lastmod>
   </url>
 </urlset>

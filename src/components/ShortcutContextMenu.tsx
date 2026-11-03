@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { Check, ExternalLink, FolderInput, FolderOpen, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Check, Copy, ExternalLink, FolderInput, FolderOpen, Pencil, Plus, Trash2 } from 'lucide-react';
 import type { Shortcut, ShortcutGroup } from '../types';
 
 interface ShortcutContextMenuProps {
@@ -16,11 +16,12 @@ interface ShortcutContextMenuProps {
   onOpen: (shortcut: Shortcut) => void;
   onManageGroups: () => void;
   onToggleGroup: (shortcut: Shortcut, group: ShortcutGroup) => void;
+  onCopyFavorite?: (shortcut: Shortcut) => void;
 }
 
 const viewportInset = 10;
 
-export function ShortcutContextMenu({ shortcut, categories, groups, x, y, onClose, onDelete, onEdit, onMove, onOpen, onManageGroups, onToggleGroup }: ShortcutContextMenuProps) {
+export function ShortcutContextMenu({ shortcut, categories, groups, x, y, onClose, onDelete, onEdit, onMove, onOpen, onManageGroups, onToggleGroup, onCopyFavorite }: ShortcutContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState<{ left: number; top: number } | null>(null);
 
@@ -98,6 +99,7 @@ export function ShortcutContextMenu({ shortcut, categories, groups, x, y, onClos
       </div>
       <button type="button" role="menuitem" onClick={() => { onClose(); onOpen(shortcut); }}><ExternalLink aria-hidden="true" />打开网站</button>
       <button type="button" role="menuitem" onClick={() => { onClose(); onEdit(shortcut); }}><Pencil aria-hidden="true" />编辑网站</button>
+      {onCopyFavorite && <button type="button" role="menuitem" onClick={() => { onClose(); onCopyFavorite(shortcut); }}><Copy aria-hidden="true" />复制到常用</button>}
       <div className="shortcut-context-divider" role="separator" />
       <p className="shortcut-context-label"><FolderInput aria-hidden="true" />移动到分类</p>
       <div className="shortcut-context-categories" role="group" aria-label="选择目标分类">

@@ -1,0 +1,120 @@
+html {
+  --material-ink: #fff; --material-secondary: #f0f5fc;
+  --material-outline: rgba(255,255,255,.5); --material-track: rgba(255,255,255,.3);
+  --material-backing: rgb(8 18 30 / var(--clear-surface-opacity, .1));
+  --material-shadow: 0 1px 3px rgba(0,0,0,.7), 0 2px 8px rgba(0,0,0,.3);
+}
+html[data-desk-ink="dark"] {
+  --material-ink: #172033; --material-secondary: #34445c;
+  --material-outline: rgba(23,32,51,.4); --material-track: rgba(23,32,51,.25);
+  --material-backing: rgb(255 255 255 / var(--clear-surface-opacity, .1));
+  --material-shadow: 0 1px 3px rgba(255,255,255,.7);
+}
+html[data-desk-material="transparent"] .desk-app { --desktop-label: var(--material-ink); --desktop-secondary: var(--material-secondary); }
+/* A clear canvas, not frosted glass. Block colors remain saved for normal mode. */
+html[data-desk-material="transparent"] .desk-app :is(.header-actions, .desk-search),
+html[data-desk-material="transparent"] .desk-app .widget-frame > .glass-panel,
+html[data-desk-material="transparent"] .widget-floating-panel > .glass-panel,
+html[data-desk-material="transparent"] .desk-app .icon-mode .icon-desktop-group.has-block-background,
+html[data-desk-material="transparent"] .widget-frame.widget-floating-panel:has(> :is(.focus-card, .converter-card)) {
+  background: transparent; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+html[data-desk-material="transparent"] .desk-app :is(.header-actions, .desk-search) { color: var(--material-ink, #fff); border-color: var(--material-outline); }
+html[data-desk-material="transparent"] .desk-app .desk-search { border-radius: 999px; }
+html[data-desk-material="transparent"] .header-actions :is(.workspace-trigger, .account-trigger, .icon-button, .text-button, .view-header-button),
+html[data-desk-material="transparent"] .desk-search > :is(input, button),
+html[data-desk-material="transparent"] .desk-search .search-engine-select,
+html[data-desk-material="transparent"] .desk-search .search-engine-select select { color: var(--material-ink, #fff); background: transparent; }
+html[data-desk-material="transparent"] .desk-search > input::placeholder { color: var(--material-ink, #fff); opacity: .92; }
+html[data-desk-material="transparent"] .desk-search .command-trigger { color: var(--material-ink, #fff); border-color: var(--material-outline); background: transparent; }
+html[data-desk-material="transparent"] .desk-search :is(.search-engine-select, .command-trigger kbd) { border-color: var(--material-outline); }
+/* Menus and editing surfaces keep their own ink and backing. */
+html[data-desk-material="transparent"] .desk-search:focus-within { background: rgba(12,24,39,.85); }
+html[data-desk-material="transparent"] .desk-search .search-engine-select option { color: #24344b; background: #fff; }
+
+html[data-desk-material="transparent"] .desk-app .widget-frame > .glass-panel,
+html[data-desk-material="transparent"] .widget-floating-panel > .glass-panel,
+html[data-desk-material="transparent"] .desk-app .icon-mode .icon-desktop-group.has-block-background {
+  --text: var(--material-ink, #fff); --faint: var(--material-secondary, #f0f5fc); --muted: var(--material-secondary, #f0f5fc); --muted-strong: var(--material-secondary, #f0f5fc);
+  --desktop-label: var(--material-ink, #fff); --desktop-secondary: var(--material-secondary, #f0f5fc);
+  --surface-item: transparent; --surface-item-strong: rgba(255,255,255,.12); --surface-muted: transparent;
+  --line: rgba(255,255,255,.28); --item-border: rgba(255,255,255,.28);
+  color: var(--material-ink, #fff); border-color: rgba(255,255,255,.25);
+}
+html[data-desk-material="transparent"] :is(.desk-header, .welcome, .glass-panel, .icon-desktop-group) { text-shadow: var(--material-shadow); }
+html[data-desk-material="transparent"] :is(.widget-frame > .glass-panel) :is(
+  .mini-heading > span, .mini-heading svg, .mini-heading button, .widget-height-toggle,
+  .calendar-weekdays, .calendar-month strong, .calendar-day, .world-clock-city strong,
+  .world-clock-city small, .world-clock-date small, .world-clock-row time,
+  .today-task-copy, .today-task-empty, .today-task-empty strong, .today-context-grid strong,
+  .today-context-grid > button, .today-context-grid > div, .widget-inline-note, .widget-inline-note svg,
+  .weather-primary strong, .weather-primary small, .weather-location, .weather-details dt, .weather-details dd,
+  .widget-source-row, .widget-source-row a, .widget-text-action, .clipboard-footnote,
+  .clipboard-copy, .clipboard-copy small, .countdown-row, .countdown-row small, .countdown-row b,
+  .next-reminder strong, .next-reminder small, .quick-action-more, .quick-actions-grid button,
+  .quick-actions-grid button > span, .focus-ring time, .focus-presets button,
+  .task-title-button, .calculator-display, .converter-swap, .converter-row output,
+  .time-event-copy strong, .time-event-copy small, .time-event-card > b
+) { color: var(--material-ink, #fff); }
+html[data-desk-material="transparent"] .widget-frame > .glass-panel :is(
+  .today-task-empty, .today-task-row.focused, .today-context-grid > button > span:first-child,
+  .today-context-grid > div > span:first-child, .quick-actions-grid button > span,
+  .focus-presets button, .focus-cycle-controls select, .calculator-display,
+  .calculator-grid button:not(.equals):not(.active), input:not([type="checkbox"]), textarea, select
+) { color: var(--material-ink, #fff); background: transparent; border-color: var(--material-outline); }
+html[data-desk-material="transparent"] .widget-frame > .glass-panel :is(input, textarea)::placeholder { color: var(--material-secondary, #f0f5fc); opacity: 1; }
+html[data-desk-material="transparent"] .widget-frame > .glass-panel :is(input:not([type="checkbox"]), textarea, select):focus {
+  color: var(--material-ink, #fff); background: #14263d; border-color: var(--material-ink, #fff); text-shadow: none;
+}
+html[data-desk-material="transparent"] .widget-frame > .glass-panel select option { color: #24344b; background: #fff; }
+html[data-desk-material="transparent"] .widget-frame > .glass-panel .focus-presets button.active { color: var(--material-ink, #fff); background: rgba(255,255,255,.18); border-color: rgba(255,255,255,.8); }
+html[data-desk-material="transparent"] .widget-frame > .glass-panel .focus-dial-track { stroke: var(--material-track); }
+html[data-desk-material="transparent"] .widget-frame > .glass-panel .focus-dial-progress { stroke: var(--material-ink, #fff); }
+
+html[data-desk-material="transparent"] .widget-frame > .shortcut-section .shortcut-card { color: var(--material-ink, #fff); background: transparent; border-color: transparent; box-shadow: none; }
+html[data-desk-material="transparent"] .widget-frame > .shortcut-section .shortcut-card:hover { background: rgba(255,255,255,.1); border-color: var(--material-outline); }
+html[data-desk-material="transparent"] .widget-frame > .shortcut-section :is(.shortcut-copy strong, .shortcut-copy small, .shortcut-heading > div:first-child > span, .category-tab, .quiet-button, .category-tabs button) { color: var(--material-ink, #fff); }
+html[data-desk-material="transparent"] .widget-frame > .shortcut-section :is(.quiet-button, .view-switch, .category-tabs button, .category-tab) { background: transparent; border-color: var(--material-outline); }
+html[data-desk-material="transparent"] .widget-frame > .shortcut-section :is(.view-switch button.active, .category-tabs button.active, .category-tab.active) { color: var(--material-ink, #fff); background: rgba(255,255,255,.18); }
+/* Popovers are reading surfaces, independent of the clear canvas around them. */
+html[data-desk-material="transparent"] :is(.desktop-search-results, .shortcut-manage-menu, .shortcut-groups-menu, .desktop-mode-popover, .account-menu, .workspace-menu) {
+  --text: #24344b; --muted-strong: #52637a; --faint: #64748b; --line: #dbe3ee; color: #24344b; text-shadow: none;
+}
+html[data-desk-material="transparent"] .widget-preview-close,
+html[data-desk-material="transparent"] .widget-preview-resize { color: var(--material-ink, #fff); background: #14263d; }
+html[data-desk-material="transparent"] .has-custom-wallpaper .desktop-backdrop > :not(.scene-wash) { display: none; }
+
+/* Open tools are work surfaces: a backing prevents duplicate text showing through. */
+html[data-desk-material="transparent"] .widget-frame.widget-floating-panel,
+html[data-desk-material="transparent"] .widget-frame.widget-floating-panel:has(> :is(.focus-card, .converter-card)) { background: #14263d; border-radius: var(--radius-panel); }
+html[data-desk-material="transparent"] .widget-frame.widget-floating-panel > .glass-panel { background: transparent; }
+html[data-desk-material="transparent"] .widget-frame > .widget-height-toggle,
+html[data-desk-material="transparent"] .widget-frame > .glass-panel .calendar-month,
+html[data-desk-material="transparent"] .widget-frame > .glass-panel .focus-buttons button:not(.focus-primary) { color: var(--material-ink, #fff); background: transparent; }
+html[data-desk-material="transparent"] .widget-frame > .shortcut-section .shortcut-style-control { background: transparent; }
+html[data-desk-material="transparent"] .widget-frame > .shortcut-section .shortcut-style-control button { color: var(--material-ink, #fff); }
+html[data-desk-material="transparent"] .widget-frame > .shortcut-section .shortcut-style-control button[aria-pressed="true"] { color: var(--material-ink, #fff); background: rgba(255,255,255,.18); }
+html[data-desk-material="transparent"] :is(.shortcut-icon, .desktop-site-icon, .primary-small-button, .focus-primary) { text-shadow: none; }
+/* Quiet, borderless grouping follows the wallpaper without drawing a grid over it. */
+html[data-desk-material="transparent"] .desk-app .header-actions,
+html[data-desk-material="transparent"] .desk-app .widget-frame > .glass-panel { border-color: transparent; background: var(--material-backing); }
+html[data-desk-material="transparent"] .desk-app .widget-frame > .icon-desktop-section { background: transparent; }
+html[data-desk-material="transparent"] .desk-app .icon-mode .icon-desktop-group.has-block-background { border-color: transparent; background: var(--material-backing); }
+
+@media (prefers-reduced-transparency: reduce) {
+  html[data-desk-material="transparent"] .desk-app :is(.header-actions, .desk-search),
+  html[data-desk-material="transparent"] .desk-app .widget-frame > .glass-panel,
+  html[data-desk-material="transparent"] .widget-floating-panel > .glass-panel,
+  html[data-desk-material="transparent"] .desk-app .icon-mode .icon-desktop-group.has-block-background { background: #14263d; }
+}
+
+html[data-desk-material="transparent"] .desk-search:focus-within,
+html[data-desk-material="transparent"] .widget-frame.widget-floating-panel {
+  --material-ink: #fff; --material-secondary: #f0f5fc; --material-outline: rgba(255,255,255,.5); --material-track: rgba(255,255,255,.3); --material-shadow: none;
+}
+html[data-desk-material="transparent"] .widget-frame > .glass-panel .calendar-day.today { color: #fff; }
+html[data-desk-material="transparent"] .widget-frame > .glass-panel :is(input,textarea):focus::placeholder { color: #f0f5fc; }
+html[data-desk-material="transparent"] .welcome { color: var(--material-ink); }
+@media (prefers-reduced-transparency: reduce) {
+  html[data-desk-material="transparent"] { --material-ink: #fff; --material-secondary: #f0f5fc; --material-outline: rgba(255,255,255,.5); --material-track: rgba(255,255,255,.3); }
+}

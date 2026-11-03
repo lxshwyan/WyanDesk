@@ -1,16 +1,22 @@
 import type { DeskWorkspace } from '../types';
 import { DEFAULT_QUICK_ACTION_IDS } from './quickActions';
+import { withRecommendedWidgetBackgrounds } from './blockBackground';
 import { createDefaultWorkspaceLayout } from './widgetLayout';
 
 export function cleanWorkspaceName(value: string): string {
   return value.trim().replace(/\s+/g, ' ').slice(0, 12);
 }
 
-export function createBlankWorkspace(id: string, name: string): DeskWorkspace {
+export function createBlankWorkspace(id: string, name: string, appearance?: DeskWorkspace): DeskWorkspace {
+  const base = withRecommendedWidgetBackgrounds(createDefaultWorkspaceLayout());
+  const layout = appearance ? { ...base, railWidth: appearance.layout.railWidth, widgetOrder: appearance.layout.widgetOrder.filter((id) => !id.startsWith('note:')), widgets: Object.fromEntries(Object.entries(base.widgets).map(([id, size]) => [id, { ...size, ...appearance.layout.widgets[id as keyof typeof base.widgets], background: appearance.layout.widgets[id as keyof typeof base.widgets]?.background || size.background }])) as DeskWorkspace['layout']['widgets'] } : base;
   return {
     id,
     name: cleanWorkspaceName(name) || '新桌面',
-    categories: ['常用'],
+    viewMode: appearance?.viewMode || 'work',
+    shortcutStyle: appearance?.shortcutStyle || 'icons',
+    categories: ['日用'],
+    categoryBackgrounds: { 日用: appearance?.categoryBackgrounds?.[appearance.categories[0]] || { gradient: 'silver' } },
     shortcuts: [],
     shortcutGroups: [],
     quickActionIds: [...DEFAULT_QUICK_ACTION_IDS],
@@ -19,7 +25,7 @@ export function createBlankWorkspace(id: string, name: string): DeskWorkspace {
     note: '',
     events: [],
     recentShortcutIds: [],
-    layout: createDefaultWorkspaceLayout(),
+    layout,
   };
 }
 
@@ -32,6 +38,7 @@ export function duplicateWorkspace(source: DeskWorkspace, id: string, name: stri
     shortcuts: source.shortcuts.map((shortcut) => ({ ...shortcut })),
     shortcutGroups: source.shortcutGroups.map((group) => ({ ...group, shortcutIds: [...group.shortcutIds] })),
     quickActionIds: [...source.quickActionIds],
+    noteCards: source.noteCards?.map((note) => ({ ...note })),
     tasks: source.tasks.map((task) => ({ ...task })),
     events: source.events.map((event) => ({ ...event })),
     recentShortcutIds: [...source.recentShortcutIds],

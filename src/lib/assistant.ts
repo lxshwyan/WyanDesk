@@ -1,3 +1,5 @@
+import { cloudFetch } from './cloudSync';
+
 export interface AssistantModel {
   id: string;
   label: string;
@@ -123,6 +125,17 @@ export class AssistantRequestError extends Error {
     this.status = status;
     this.retryAfterSeconds = retryAfterSeconds;
     this.quota = quota;
+  }
+}
+
+async function assistantFetch(path: string, init: RequestInit): Promise<Response> {
+  try {
+    return await cloudFetch(path, init);
+  } catch (cause) {
+    if (cause instanceof TypeError) {
+      throw new AssistantRequestError('无法连接助手，请检查网络后重新连接', 'network_error');
+    }
+    throw cause;
   }
 }
 
@@ -330,7 +343,7 @@ function assistantClientID(): string {
 }
 
 export async function fetchAssistantConfig(signal?: AbortSignal): Promise<AssistantConfig> {
-  const response = await fetch('/api/desk/assistant/config', {
+  const response = await assistantFetch('/api/desk/assistant/config', {
     credentials: 'include',
     redirect: 'manual',
     headers: { Accept: 'application/json', 'X-Wyan-Assistant-Client': assistantClientID() },
@@ -348,7 +361,7 @@ export async function queryAssistant(
   signal?: AbortSignal,
   model?: string,
 ): Promise<AssistantAnswer> {
-  const response = await fetch('/api/desk/assistant/query', {
+  const response = await assistantFetch('/api/desk/assistant/query', {
     method: 'POST',
     credentials: 'include',
     redirect: 'manual',
@@ -365,7 +378,7 @@ export async function submitAssistantFeedback(
   outcome: AssistantFeedbackOutcome,
   signal?: AbortSignal,
 ): Promise<void> {
-  const response = await fetch('/api/desk/assistant/feedback', {
+  const response = await assistantFetch('/api/desk/assistant/feedback', {
     method: 'POST',
     credentials: 'include',
     redirect: 'manual',

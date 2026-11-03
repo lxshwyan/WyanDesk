@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'wyandesk-shell-';
-const CACHE_NAME = `${CACHE_PREFIX}v10`;
+const CACHE_NAME = `${CACHE_PREFIX}v12`;
 const BUILD_ASSETS = /* __WYANDESK_BUILD_ASSETS__ */ [];
 const SHELL = [...new Set(['/', '/index.html', '/favicon.svg', '/pwa-192.png', '/pwa-512.png', '/manifest.webmanifest', ...BUILD_ASSETS])];
 

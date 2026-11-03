@@ -76,7 +76,7 @@ export function WorkspaceManager({ workspaces, activeId, onAdd, onClose, onDelet
             </div>
           ))}
         </div>
-        <p className="workspace-hint">最多 8 个桌面。复制会保留当前桌面的内容，空白桌面从“常用”分类开始。</p>
+        <p className="workspace-hint">最多 8 个桌面。</p>
       </section>
     </ManagedLayer>
   );

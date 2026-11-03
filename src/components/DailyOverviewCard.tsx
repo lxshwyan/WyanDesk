@@ -1,5 +1,6 @@
+import { useWidgetViewState } from './WidgetViewState';
 import { BellRing, CalendarDays, Check, ListTodo, Plus, Star } from 'lucide-react';
-import { useState, type FormEvent } from 'react';
+import { type FormEvent } from 'react';
 import type { DeskEvent, DeskReminder, DeskTask } from '../types';
 
 interface DailyOverviewCardProps {
@@ -22,7 +23,7 @@ function taskDateLabel(task: DeskTask, todayKey: string): string {
 }
 
 export function DailyOverviewCard({ tasks, openTaskCount, focusTaskId, todayKey, nextEvent, nextReminder, onAddTask, onAddEvent, onOpenTask, onToggleTask }: DailyOverviewCardProps) {
-  const [draft, setDraft] = useState('');
+  const [draft, setDraft] = useWidgetViewState('draft', '');
   const visibleTasks = tasks.filter((task) => !task.done).slice(0, 3);
 
   function addTask(event: FormEvent) {

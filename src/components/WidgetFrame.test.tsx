@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { WidgetFrame } from './WidgetFrame';
 
 describe('WidgetFrame', () => {
-  it('offers a quick three-row height toggle for work widgets', () => {
+  it('offers a preview dialog action separate from saved height', () => {
     const html = renderToStaticMarkup(
       <WidgetFrame id="tasks" label="今日任务" size={{ width: 'standard', height: 'standard' }} editing={false} onChange={vi.fn()}>
         <section className="glass-panel"><div className="mini-heading">今日任务</div></section>
@@ -11,11 +11,11 @@ describe('WidgetFrame', () => {
     );
 
     expect(html).toContain('has-height-toggle');
-    expect(html).toContain('aria-label="今日任务放大组件"');
-    expect(html).toContain('aria-pressed="false"');
+    expect(html).toContain('aria-label="今日任务放大查看"');
+    expect(html).toContain('aria-expanded="false"');
   });
 
-  it('labels tall widgets as collapsible and avoids duplicating layout controls', () => {
+  it('uses the same preview action for tall widgets and keeps editing explicit', () => {
     const tallHtml = renderToStaticMarkup(
       <WidgetFrame id="schedule" label="今日日程" size={{ width: 'standard', height: 'tall' }} editing={false} onChange={vi.fn()}>
         <section className="glass-panel"><div className="mini-heading">今日日程</div></section>
@@ -27,8 +27,8 @@ describe('WidgetFrame', () => {
       </WidgetFrame>,
     );
 
-    expect(tallHtml).toContain('aria-label="今日日程恢复原高度"');
-    expect(tallHtml).toContain('aria-pressed="true"');
+    expect(tallHtml).toContain('aria-label="今日日程放大查看"');
+    expect(tallHtml).toContain('aria-haspopup="dialog"');
     expect(editingHtml).not.toContain('widget-height-toggle');
     expect(editingHtml).toContain('紧凑');
     expect(editingHtml).toContain('加高');

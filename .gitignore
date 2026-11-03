@@ -1,6 +1,7 @@
 node_modules/
 dist/
 extension-dist/
+edge-store-dist/
 .DS_Store
 .env
 .env.*

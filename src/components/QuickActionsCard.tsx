@@ -1,4 +1,4 @@
-import { Command, Settings2, Zap } from 'lucide-react';
+import { MoreHorizontal, Settings2, Zap } from 'lucide-react';
 import type { DeskCommand } from './CommandPalette';
 
 interface QuickActionsCardProps {
@@ -17,10 +17,10 @@ export function QuickActionsCard({ actions, onOpenAll, onManage }: QuickActionsC
             <span>{action.icon}</span><small>{action.label}</small>
           </button>
         ))}
-        <button className="quick-action-more" type="button" onClick={onOpenAll} title="打开全部操作和快捷命令">
-          <span><Command aria-hidden="true" /></span><small>更多</small>
-        </button>
       </div>
+      <button className="quick-action-more" type="button" onClick={onOpenAll} title="打开全部操作和快捷命令">
+        <MoreHorizontal aria-hidden="true" />全部操作
+      </button>
     </section>
   );
 }

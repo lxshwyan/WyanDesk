@@ -1,6 +1,7 @@
 import type { CSSProperties, MouseEvent, PointerEvent } from 'react';
 import { MoreVertical } from 'lucide-react';
 import type { Shortcut } from '../types';
+import { WebsiteIcon } from './WebsiteIcon';
 
 interface ShortcutCardProps {
   shortcut: Shortcut;
@@ -43,7 +44,7 @@ export function ShortcutCard({ shortcut, compact, onOpen, onContextMenu }: Short
   return (
     <article className={`shortcut-card${compact ? ' compact' : ''}${shortcut.featured ? ' featured' : ''}`} style={style} onPointerMove={updateHighlight} onContextMenu={showContextMenu}>
       <a href={shortcut.url} target="_blank" rel="noreferrer" aria-label={`打开 ${shortcut.title}`} onClick={() => onOpen(shortcut)}>
-        <span className="shortcut-icon">{shortcut.icon}</span>
+        <span className="shortcut-icon"><WebsiteIcon shortcut={shortcut} /></span>
         <span className="shortcut-copy">
           <strong>{shortcut.title}</strong>
           {!compact && <small>{shortcutDescription(shortcut)}</small>}

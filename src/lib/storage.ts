@@ -1,14 +1,19 @@
+import { normalizeWallpaperView } from './appearance';
+import { normalizeWallpaperPreferences } from './wallpapers';
 import { categoryOrder, createDefaultState, defaultShortcuts } from '../data/defaults';
 import type { DeskInboxItem, DeskState, DeskWorkspace, Shortcut, ShortcutGroup } from '../types';
 import { createBlankWorkspace } from './workspaces';
 import { normalizeFocusMinutes } from './focusTimer';
 import { normalizeTimeEvents } from './timeEvents';
+import { normalizeNoteCards } from './noteCards';
 import { normalizeWorkspaceLayout } from './widgetLayout';
 import { normalizeWorldClockZones } from './worldClock';
 import { clearLocalClipboardItems } from './localClipboard';
 import { clearWeatherWidgetState } from './weather';
 import { normalizeQuickActionIds } from './quickActions';
 import { normalizeInboxItems } from './readingList';
+import { normalizeFavoriteGroups } from './favorites';
+import { normalizeCategoryBackgrounds } from './blockBackground';
 
 const STORAGE_KEY = 'wyandesk.state.v1';
 const RECOVERY_KEY = 'wyandesk.state.recovery.v1';
@@ -99,7 +104,16 @@ function migrateShortcutGroups(saved: SavedWorkspace, shortcuts: Shortcut[]): Sh
 }
 
 function migrateWorkspace(saved: SavedWorkspace, defaults: DeskWorkspace, id: string, name: string): DeskWorkspace {
-  const shortcuts = migrateShortcuts(saved, defaults);
+  let shortcuts = migrateShortcuts(saved, defaults);
+  let categories = migrateCategories(saved, shortcuts);
+  let categoryBackgrounds = normalizeCategoryBackgrounds(saved.categoryBackgrounds, categories);
+  const commonSites = shortcuts.filter((site) => site.category === '常用');
+  if (categories.includes('常用') && commonSites.length > 0 && commonSites.every((site) => ['baidu', 'bing', 'mail-163', 'bilibili', 'zhihu', 'railway'].includes(site.id)) && !categories.includes('日用')) {
+    categories = categories.map((name) => name === '常用' ? '日用' : name);
+    shortcuts = shortcuts.map((site) => site.category === '常用' ? { ...site, category: '日用' } : site);
+    if (categoryBackgrounds?.['常用']) { const { 常用: background, ...others } = categoryBackgrounds; categoryBackgrounds = { ...others, 日用: background }; }
+  }
+  const noteCards = normalizeNoteCards(saved.noteCards);
   const tasks = Array.isArray(saved.tasks) ? saved.tasks : defaults.tasks.map((task) => ({ ...task }));
   const focusTaskId = typeof saved.focusTaskId === 'string' && tasks.some((task) => task.id === saved.focusTaskId && !task.done)
     ? saved.focusTaskId
@@ -107,18 +121,23 @@ function migrateWorkspace(saved: SavedWorkspace, defaults: DeskWorkspace, id: st
   return {
     id,
     name,
-    categories: migrateCategories(saved, shortcuts),
+    viewMode: saved.viewMode === 'navigation' ? 'navigation' : 'work',
+    shortcutStyle: saved.shortcutStyle === 'icons' ? 'icons' : 'cards',
+    categories,
+    ...(categoryBackgrounds ? { categoryBackgrounds } : {}),
     shortcuts,
     shortcutGroups: migrateShortcutGroups(saved, shortcuts),
     quickActionIds: normalizeQuickActionIds(saved.quickActionIds),
     tasks,
     focusTaskId,
+    noteTitle: typeof saved.noteTitle === 'string' ? saved.noteTitle.trim().slice(0, 24) : undefined,
+    ...(noteCards.length ? { noteCards } : {}),
     note: typeof saved.note === 'string' ? saved.note : defaults.note,
     events: Array.isArray(saved.events) ? saved.events : defaults.events.map((event) => ({ ...event })),
     recentShortcutIds: Array.isArray(saved.recentShortcutIds)
       ? saved.recentShortcutIds.filter((item): item is string => typeof item === 'string').slice(0, 6)
       : [...defaults.recentShortcutIds],
-    layout: normalizeWorkspaceLayout(saved.layout),
+    layout: normalizeWorkspaceLayout(saved.layout, noteCards.map((note) => note.id)),
   };
 }
 
@@ -152,11 +171,12 @@ export function migrateDeskState(value: unknown): DeskState {
   const activeWorkspaceId = workspaces.some((workspace) => workspace.id === requestedActiveId)
     ? requestedActiveId
     : workspaces[0].id;
-  const preferences = saved.preferences && typeof saved.preferences === 'object' ? saved.preferences : {};
+  const preferences: Partial<DeskState['preferences']> = saved.preferences && typeof saved.preferences === 'object' ? saved.preferences : {};
   const legacy = (saved.version || 0) < 6;
   const inbox: DeskInboxItem[] = normalizeInboxItems(saved.inbox);
   return {
-    version: 8,
+    version: 9,
+    favoriteGroups: normalizeFavoriteGroups(saved.favoriteGroups),
     activeWorkspaceId,
     workspaces,
     inbox,
@@ -165,9 +185,20 @@ export function migrateDeskState(value: unknown): DeskState {
     preferences: {
       ...defaults.preferences,
       ...preferences,
+      showFocusTimer: (preferences as Partial<DeskState['preferences']>).showFocusTimer === true,
+      showCalendar: (preferences as Partial<DeskState['preferences']>).showCalendar === true,
+      showCalculator: (preferences as Partial<DeskState['preferences']>).showCalculator === true,
+      scene: (preferences as Partial<DeskState['preferences']>).scene || 'ocean',
+      minimalMode: (preferences as Partial<DeskState['preferences']>).minimalMode === true,
       lockActivityEnabled: typeof (preferences as Partial<DeskState['preferences']>).lockActivityEnabled === 'boolean'
         ? (preferences as Partial<DeskState['preferences']>).lockActivityEnabled!
         : true,
+      ...(preferences.wallpaper ? { wallpaper: normalizeWallpaperPreferences(preferences.wallpaper) } : {}),
+      transparentAppearance: preferences.transparentAppearance === true,
+      ...(preferences.wallpaperView ? { wallpaperView: normalizeWallpaperView(preferences.wallpaperView) } : {}),
+      showConverter: preferences.showConverter === true,
+      focusCycleEnabled: preferences.focusCycleEnabled === true,
+      focusBreakMinutes: normalizeFocusMinutes(preferences.focusBreakMinutes, 5),
       focusDurationMinutes: normalizeFocusMinutes((preferences as Partial<DeskState['preferences']>).focusDurationMinutes),
       worldClockZones: normalizeWorldClockZones((preferences as Partial<DeskState['preferences']>).worldClockZones),
       lockMessage: typeof (preferences as Partial<DeskState['preferences']>).lockMessage === 'string'
@@ -216,6 +247,7 @@ export function writeDeskState(state: DeskState): void {
 
 export function clearDeskState(): void {
   window.localStorage.removeItem(STORAGE_KEY);
+  window.localStorage.removeItem('wyandesk.focus-session.v1');
   clearLocalClipboardItems();
   clearWeatherWidgetState();
 }

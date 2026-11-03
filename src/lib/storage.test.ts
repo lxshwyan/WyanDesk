@@ -29,6 +29,35 @@ describe('normalizeURL', () => {
 });
 
 describe('migrateDeskState', () => {
+  it('keeps wallpaper tuning in the original v9 backup without adding focus session state', () => {
+    const value = migrateDeskState({ version: 9, preferences: { wallpaperView: { x: 10, y: 90, tone: 'dark', strength: 15 } } });
+    const restored = parseDeskBackup(serializeDeskBackup(value));
+    expect(restored.preferences.wallpaperView).toEqual({ x: 10, y: 90, tone: 'dark', strength: 15 });
+    expect(Object.hasOwn(restored, 'focusSession')).toBe(false);
+  });
+
+  it('keeps transparent appearance opt-in and preserves block colors through backup', () => {
+    const saved = migrateDeskState({ version: 9, preferences: { transparentAppearance: true } });
+    const restored = parseDeskBackup(serializeDeskBackup(saved));
+    expect(restored.preferences.transparentAppearance).toBe(true);
+    expect(restored.workspaces).toEqual(saved.workspaces);
+    expect(migrateDeskState({ version: 9, preferences: { transparentAppearance: 'true' } }).preferences.transparentAppearance).toBe(false);
+    expect(migrateDeskState({ version: 9 }).preferences.transparentAppearance).toBe(false);
+  });
+
+  it('round-trips navigation mode without changing saved content or other workspaces', () => {
+    const migrated = migrateDeskState({ version: 8, activeWorkspaceId: 'one', workspaces: [
+      { id: 'one', name: '导航', viewMode: 'navigation', categories: ['自建'], shortcuts: [], note: '保留笔记', tasks: [{ id: 'task', text: '保留待办', done: false, createdAt: '2026-10-29' }] },
+      { id: 'two', name: '工作', viewMode: 'unexpected', categories: ['空分类'], shortcuts: [], note: '另一桌面' },
+    ] });
+    expect(migrated.workspaces[0].viewMode).toBe('navigation');
+    expect(migrated.workspaces[0].note).toBe('保留笔记');
+    expect(migrated.workspaces[0].tasks[0].text).toBe('保留待办');
+    expect(migrated.workspaces[1].viewMode).toBe('work');
+    expect(migrated.workspaces[1].categories).toEqual(['空分类']);
+    expect(parseDeskBackup(serializeDeskBackup(migrated))).toEqual(migrated);
+  });
+
   it('upgrades v1 data without dropping user content', () => {
     const migrated = migrateDeskState({
       version: 1,
@@ -37,7 +66,7 @@ describe('migrateDeskState', () => {
       tasks: [{ id: 'mine', text: '保留任务', done: false, createdAt: '2026-10-05T00:00:00.000Z' }],
     });
 
-    expect(migrated.version).toBe(8);
+    expect(migrated.version).toBe(9);
     expect(migrated.workspaces).toHaveLength(1);
     expect(migrated.workspaces[0].note).toBe('保留便签');
     expect(migrated.workspaces[0].tasks[0]?.id).toBe('mine');
@@ -135,11 +164,11 @@ describe('migrateDeskState', () => {
       }],
     });
 
-    expect(migrated.version).toBe(8);
+    expect(migrated.version).toBe(9);
     expect(migrated.workspaces[0].layout.railWidth).toBe('widgets');
     expect(migrated.workspaces[0].layout.widgets.tasks).toEqual({ width: 'wide', height: 'tall' });
     expect(migrated.workspaces[0].layout.widgets.notes).toEqual({ width: 'standard', height: 'standard' });
-    expect(migrated.workspaces[0].layout.widgetOrder).toEqual(['quickActions', 'dailyOverview', 'notes', 'weather', 'countdown', 'clipboard', 'schedule', 'tasks', 'reminders', 'focus', 'calendar', 'calculator', 'worldClock']);
+    expect(migrated.workspaces[0].layout.widgetOrder).toEqual(['quickActions', 'dailyOverview', 'notes', 'weather', 'countdown', 'clipboard', 'schedule', 'tasks', 'reminders', 'focus', 'calendar', 'calculator', 'worldClock', 'converter']);
   });
 
   it('preserves three unique quick actions and repairs an empty selection', () => {
@@ -318,7 +347,7 @@ describe('local state recovery', () => {
     const result = readDeskStateWithStatus();
     expect(result.isNew).toBe(true);
     expect(result.recovered).toBe(false);
-    expect(result.state.version).toBe(8);
+    expect(result.state.version).toBe(9);
   });
 
   it('preserves invalid JSON as a recovery snapshot', () => {
@@ -326,7 +355,7 @@ describe('local state recovery', () => {
     const result = readDeskStateWithStatus();
     expect(result.isNew).toBe(false);
     expect(result.recovered).toBe(true);
-    expect(result.state.version).toBe(8);
+    expect(result.state.version).toBe(9);
     expect(readRecoverySnapshot()).toBe('{invalid-json');
   });
 });

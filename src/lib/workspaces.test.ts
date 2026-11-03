@@ -5,7 +5,7 @@ describe('workspace helpers', () => {
   it('creates a quiet empty workspace with one usable category', () => {
     const workspace = createBlankWorkspace('new', '  项目 A  ');
     expect(workspace.name).toBe('项目 A');
-    expect(workspace.categories).toEqual(['常用']);
+    expect(workspace.categories).toEqual(['日用']);
     expect(workspace.shortcuts).toEqual([]);
   });
 
@@ -21,7 +21,7 @@ describe('workspace helpers', () => {
     expect(source.tasks[0].text).toBe('任务');
     expect(source.quickActionIds[0]).toBe('open-shortcut-docs');
     expect(source.layout.widgets.tasks.height).toBe('standard');
-    expect(source.layout.widgetOrder).toEqual(['quickActions', 'dailyOverview', 'notes', 'weather', 'countdown', 'clipboard', 'schedule', 'tasks', 'reminders', 'focus', 'calendar', 'calculator', 'worldClock']);
+    expect(source.layout.widgetOrder).toEqual(['quickActions', 'dailyOverview', 'notes', 'weather', 'countdown', 'clipboard', 'schedule', 'tasks', 'reminders', 'focus', 'calendar', 'calculator', 'worldClock', 'converter']);
   });
 
   it('moves a workspace only inside valid bounds', () => {

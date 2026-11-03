@@ -18,7 +18,8 @@ export function deskSearchItems(state: DeskState): DeskSearchItem[] {
   return [
     ...state.workspaces.flatMap((workspace) => [
       ...workspace.tasks.map((task) => ({ id: task.id, kind: 'task' as const, workspaceId: workspace.id, label: task.text, description: `${workspace.name} · ${task.done ? '已完成任务' : '待办任务'}${task.dueDate ? ` · ${task.dueDate}` : ''}`, keywords: `${workspace.name} ${task.text} ${task.dueDate || ''}` })),
-      ...(workspace.note.trim() ? [{ id: `note-${workspace.id}`, kind: 'note' as const, workspaceId: workspace.id, label: `${workspace.name} · 工作便签`, description: workspace.note.replace(/\s+/g, ' ').slice(0, 100), keywords: `${workspace.name} ${workspace.note}` }] : []),
+      ...(workspace.note.trim() ? [{ id: `note-${workspace.id}`, kind: 'note' as const, workspaceId: workspace.id, label: `${workspace.name} · ${workspace.noteTitle || '工作便签'}`, description: workspace.note.replace(/\s+/g, ' ').slice(0, 100), keywords: `${workspace.name} ${workspace.noteTitle || '工作便签'} ${workspace.note}` }] : []),
+      ...(workspace.noteCards || []).filter((note) => note.content.trim()).map((note) => ({ id: note.id, kind: 'note' as const, workspaceId: workspace.id, label: `${workspace.name} · ${note.title}`, description: note.content.replace(/\s+/g, ' ').slice(0, 100), keywords: `${workspace.name} ${note.title} ${note.content}` })),
     ]),
     ...state.inbox.map((item) => ({ id: item.id, kind: 'inbox' as const, label: item.content, description: `${item.kind === 'link' ? item.readAt ? '已读资料' : '稍后阅读' : '收集箱'}${item.url ? ` · ${item.url}` : ''}`, keywords: [item.content, item.url, item.excerpt, item.note].filter(Boolean).join(' ') })),
   ];

@@ -1,0 +1,32 @@
+.has-block-background > .glass-panel, .icon-mode .icon-desktop-group.has-block-background, .block-background-preview.has-block-background { background-color: color-mix(in srgb, var(--block-color) 55%, white); background-image: var(--block-image); background-size: cover; background-position: center; }
+.icon-mode .icon-desktop-group.has-block-background { --desktop-label: #17243a; --desktop-secondary: #43556c; padding: 12px; border-radius: var(--radius-card); }
+.block-background-editor { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(420px, calc(100vw - 32px)); max-height: var(--dialog-max-height); padding: 24px; overflow-y: auto; border-radius: var(--radius-panel); background: #fbfcfe; box-shadow: var(--shadow); }
+.block-background-editor .modal-heading { margin-bottom: 16px; }
+.block-background-editor h2 { font-size: var(--type-heading); }
+.block-target-label { display: grid; gap: 8px; font-size: var(--type-control); font-weight: 600; }
+.block-target-label select { width: 100%; min-height: 40px; padding: 0 10px; border: 1px solid var(--line); border-radius: var(--radius-control); color: var(--text); background: #fff; font: inherit; }
+.block-background-preview { display: flex; align-items: center; justify-content: space-between; min-height: 96px; margin: 16px 0; padding: 16px; border-radius: var(--radius-card); color: #17243a; background: #eaf0f7; }
+.block-background-preview span { color: #43556c; font-size: var(--type-caption); }
+.block-color-options { display: flex; gap: 8px; align-items: center; }
+.block-gradient-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+.block-gradient-options button { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 4px 8px; border: 2px solid transparent; border-radius: var(--radius-control); color: #253a55; font: inherit; font-size: var(--type-control); cursor: pointer; }
+.block-gradient-options button.active { border-color: var(--blue); }
+.block-gradient-options svg { width: 14px; height: 14px; }
+.block-recommend-button { display: block; margin: 16px auto 0; padding: 4px 8px; border: 0; border-radius: var(--radius-control); color: var(--blue); background: transparent; font: inherit; font-size: var(--type-control); cursor: pointer; }
+.widget-frame.has-block-background { --faint: #53647b; --muted: #4e6078; --muted-strong: #3f526d; --surface-item: rgba(255,255,255,.62); }
+.widget-frame.has-block-background :is(.mini-heading > span, .mini-heading svg) { color: #334e6b; }
+.widget-frame.has-block-background .widget-height-toggle { color: #3b5878; }
+.widget-frame.has-block-background :is(input, textarea)::placeholder { color: #596b82; opacity: 1; }
+.widget-frame.has-block-background .focus-presets button { color: #52657e; }
+.widget-frame.has-block-background .focus-presets button.active { color: var(--blue); }
+.block-color-options > button, .block-custom-color { display: grid; place-items: center; width: 36px; height: 36px; border: 1px solid rgba(30,50,80,.15); border-radius: 50%; cursor: pointer; }
+.block-color-options > button.active { border: 2px solid var(--blue); }
+.block-color-options svg { width: 16px; height: 16px; color: #24466f; }
+.block-custom-color input { width: 24px; height: 24px; padding: 0; border: 0; background: transparent; cursor: pointer; }
+.block-image-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+.block-image-actions label { position: relative; overflow: hidden; }
+.block-image-actions input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.block-image-actions label:focus-within { outline: 3px solid var(--blue); outline-offset: 2px; }
+.block-background-error { color: #a12b35; font-size: var(--type-control); }
+.block-background-editor :is(button, input, select):focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+@media (max-width: 620px) { .block-background-editor { padding: 20px; } .block-target-label select { font-size: 16px; min-height: 44px; } .block-gradient-options button, .block-recommend-button { min-height: 44px; } .block-color-options { gap: 6px; } .block-color-options > button, .block-custom-color { width: 36px; height: 44px; border-radius: 10px; } }

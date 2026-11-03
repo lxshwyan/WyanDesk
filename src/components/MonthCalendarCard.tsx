@@ -1,5 +1,5 @@
+import { useWidgetViewState } from './WidgetViewState';
 import { CalendarRange, ChevronLeft, ChevronRight } from 'lucide-react';
-import { useState } from 'react';
 import type { DeskEvent, DeskTask } from '../types';
 
 interface MonthCalendarCardProps {
@@ -22,7 +22,7 @@ function dateKey(year: number, month: number, day: number): string {
 }
 
 export function MonthCalendarCard({ now, events, tasks }: MonthCalendarCardProps) {
-  const [view, setView] = useState(() => ({ year: now.getFullYear(), month: now.getMonth() }));
+  const [view, setView] = useWidgetViewState('view', () => ({ year: now.getFullYear(), month: now.getMonth() }));
   const cells = monthCalendarCells(view.year, view.month);
   const eventDates = new Set(events.map((event) => event.date));
   const taskDates = new Set(tasks.filter((task) => !task.done && task.dueDate).map((task) => task.dueDate!));

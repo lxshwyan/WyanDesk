@@ -1,0 +1,73 @@
+.favorite-heading { margin-bottom: 4px; }
+.favorite-heading .quiet-button { gap: 5px; font-size: var(--type-body); }
+.favorite-heading .quiet-button svg { width: 14px; height: 14px; }
+.favorite-menu-group + .favorite-menu-group { margin-top: 16px; }
+.favorite-menu-group h3 { margin: 12px 3px 4px; color: #526278; font-size: var(--type-control); font-weight: 650; overflow-wrap: anywhere; }
+.favorite-menu-select { width: 100%; min-height: 36px; margin: 8px 0; padding: 0 10px; border: 1px solid #dfe5ec; border-radius: 9px; color: #33445b; background: #f7f9fc; font: inherit; font-size: var(--type-body); }
+.favorite-menu-group .website-logo { width: 26px; height: 26px; object-fit: contain; }
+.favorite-empty { margin: 12px 0; padding: 12px 4px; color: #596b81; font-size: var(--type-body); line-height: 1.6; }
+.favorite-manager { --dialog-max-height: min(580px, 76dvh); width: min(650px, calc(100vw - 30px)); display: flex; flex-direction: column; overflow: hidden; color: var(--text); }
+.modal-layer > .favorite-manager { width: min(650px, calc(100vw - 30px)); max-height: var(--dialog-max-height); overflow: hidden; }
+.favorite-manager > .modal-heading, .favorite-manager > .modal-actions { flex-shrink: 0; }
+.favorite-manager-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 2px; }
+.favorite-group-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px; }
+.favorite-group-tabs > button { display: inline-flex; min-height: 36px; max-width: 100%; align-items: center; gap: 8px; padding: 6px 10px; border: 0; border-radius: 9px; color: #526278; background: #f2f5f9; font: inherit; font-size: var(--type-body); cursor: pointer; }
+.favorite-group-tabs > button > span { overflow-wrap: anywhere; }
+.favorite-group-tabs > button small { color: #596b81; font-size: var(--type-caption); }
+.favorite-group-tabs > button[aria-pressed="true"] { color: #1f5fbe; background: #eaf2ff; font-weight: 650; }
+.favorite-group-tabs > button:hover { background: #e8eff9; }
+.favorite-group-tabs > .favorite-new-group { color: #2765bf; background: transparent; }
+.favorite-new-group svg { width: 16px; height: 16px; flex: 0 0 auto; }
+.favorite-group-tools { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.favorite-group-tools > strong { min-width: 0; font-size: var(--type-subtitle); overflow-wrap: anywhere; }
+.favorite-group-tools > span { display: flex; flex: 0 0 auto; gap: 2px; }
+.favorite-manager .favorite-group-tools .icon-button { width: 34px; height: 34px; color: #526278; }
+.favorite-group-tools .icon-button svg { width: 16px; height: 16px; }
+.favorite-manager button:disabled { opacity: .45; cursor: not-allowed; }
+.favorite-manager .danger:hover { color: #b23434; background: #fff0f0; }
+.favorite-add-tools { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
+.favorite-add-tools svg, .favorite-back svg, .favorite-copy-button svg { width: 15px; height: 15px; flex: 0 0 auto; }
+.favorite-link-list { min-width: 0; }
+.favorite-link-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 64px; padding: 10px 0; }
+.favorite-link-row + .favorite-link-row { border-top: 1px solid #e7edf4; }
+.favorite-link-row .shortcut-manager-icon { width: 34px; height: 34px; }
+.favorite-link-row .website-logo { width: 25px; height: 25px; object-fit: contain; }
+.favorite-link-copy { min-width: 0; }
+.favorite-link-copy strong, .favorite-link-copy small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.favorite-link-copy strong { color: #27364b; font-size: var(--type-body); font-weight: 650; }
+.favorite-link-copy small { margin-top: 4px; color: #596b81; font-size: var(--type-caption); }
+.favorite-link-actions { display: flex; gap: 2px; }
+.favorite-link-actions button { display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 9px; color: #526278; background: transparent; cursor: pointer; }
+.favorite-link-actions button:hover { color: #1f5fbe; background: #edf4ff; }
+.favorite-link-actions svg { width: 16px; height: 16px; }
+.favorite-back { margin: 0 0 18px; }
+.favorite-manager label select { width: 100%; min-height: 40px; padding: 0 10px; border: 1px solid #dfe5ec; border-radius: 10px; color: #27364b; background: #fff; font: inherit; font-size: var(--type-body); }
+.favorite-destination { display: grid; gap: 6px; color: #59687c; font-size: var(--type-control); font-weight: 650; }
+.favorite-copy-note { margin: 10px 0 16px; color: #596b81; font-size: var(--type-control); }
+.favorite-copy-picker .group-search { margin-bottom: 8px; }
+.favorite-copy-picker .group-search input { min-width: 0; }
+.favorite-copy-picker .favorite-link-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 18px; }
+.favorite-copy-picker .favorite-link-row { border-top: 1px solid #e7edf4; }
+.favorite-copy-button { flex: 0 0 auto; }
+.favorite-error, .favorite-status { flex-shrink: 0; margin: 0 0 12px; font-size: var(--type-body); line-height: 1.6; }
+.favorite-error { color: #ad3030; }
+.favorite-status { color: #25724f; }
+
+@media (max-width: 620px) {
+  .favorite-heading .quiet-button, .app-switcher .workspace-manage-link { min-height: 44px; }
+  .favorite-menu-select { min-height: 44px; font-size: 16px; }
+  .favorite-manager { padding: 16px; }
+  .favorite-manager button, .favorite-group-tools .icon-button { min-height: 44px; }
+  .favorite-manager .favorite-group-tools .icon-button { width: 44px; }
+  .favorite-manager input, .favorite-manager label select { min-height: 44px; font-size: 16px; }
+  .favorite-link-row { gap: 8px; }
+  .favorite-link-actions { grid-column: 2 / -1; justify-self: end; }
+  .favorite-link-actions button { width: 44px; }
+  .favorite-group-tools { align-items: flex-start; }
+  .favorite-group-tools > strong { padding-top: 12px; }
+  .favorite-copy-picker .favorite-link-list { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .favorite-menu-group .switcher-grid a { transition: none; }
+}

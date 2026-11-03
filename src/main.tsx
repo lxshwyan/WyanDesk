@@ -4,6 +4,7 @@ import App from './App';
 import { AppErrorBoundary } from './components/AppErrorBoundary';
 import { installUsageAnalytics } from './lib/usageAnalytics';
 import './styles.css';
+import './simple-flows.css';
 
 installUsageAnalytics();
 createRoot(document.getElementById('root')!).render(<StrictMode><AppErrorBoundary><App /></AppErrorBoundary></StrictMode>);

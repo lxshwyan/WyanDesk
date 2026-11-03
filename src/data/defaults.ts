@@ -1,6 +1,8 @@
 import type { DeskState, DeskWorkspace, Shortcut } from '../types';
+import { createDefaultFavoriteGroups } from './appLauncher';
 import { DEFAULT_QUICK_ACTION_IDS } from '../lib/quickActions';
 import { createDefaultWorkspaceLayout } from '../lib/widgetLayout';
+import { withRecommendedWidgetBackgrounds } from '../lib/blockBackground';
 
 export const categoryOrder = ['常用', '微言服务', 'AI', '办公', '沟通', '云盘', '开发', '设计', '学习', '生活'];
 
@@ -59,6 +61,8 @@ export const defaultShortcuts: Shortcut[] = [
   { id: 'scholar', title: 'Google Scholar', url: 'https://scholar.google.com', category: '学习', icon: 'G', accent: '#4285f4', description: '学术搜索' },
   { id: 'weread', title: '微信读书', url: 'https://weread.qq.com', category: '学习', icon: '读', accent: '#22a06b', description: '在线阅读' },
 
+  { id: 'wyan-fishing', title: '闲钓小栈', url: 'https://fishing.wyanhub.com/', category: '生活', icon: '钓', accent: '#149668', description: '三维垂钓与休闲' },
+  { id: 'wyan-sudoku', title: '算独方格', url: 'https://wyanhub.com/sudoku/', category: '生活', icon: '独', accent: '#7c3aed', description: '数独小游戏' },
   { id: 'taobao', title: '淘宝', url: 'https://www.taobao.com', category: '生活', icon: '淘', accent: '#ff5a1f', description: '购物' },
   { id: 'jd', title: '京东', url: 'https://www.jd.com', category: '生活', icon: '京', accent: '#e2231a', description: '购物' },
   { id: 'amap', title: '高德地图', url: 'https://www.amap.com', category: '生活', icon: '高', accent: '#3579f6', description: '地图与出行' },
@@ -68,15 +72,14 @@ export const defaultShortcuts: Shortcut[] = [
 ];
 
 export const defaultStarterShortcutIds = [
-  'baidu',
-  'mail-163',
-  'bilibili',
-  'railway',
-  'wyanhub',
-  'wyan-tools',
-  'wyan-forms',
-  'wyan-collect',
+  'chatgpt', 'deepseek', 'kimi', 'doubao',
+  'tencent-docs', 'feishu', 'wps', 'qq-mail',
+  'mooc', 'wikipedia', 'scholar', 'weread',
+  'bilibili', 'wyan-tools', 'wyan-fishing', 'wyan-sudoku',
+  'github', 'gitee', 'mdn', 'stackoverflow',
+  'figma', 'canva', 'iconfont', 'unsplash',
 ] as const;
+export const starterCategories = ['AI', '办公', '学习', '日常', '开发', '设计'];
 
 const defaultStarterShortcutIdSet = new Set<string>(defaultStarterShortcutIds);
 
@@ -90,6 +93,8 @@ function createDefaultWorkspace(
   return {
     id,
     name,
+    viewMode: 'work',
+    shortcutStyle: 'cards',
     categories: [...categories],
     shortcuts: defaultShortcuts.filter(shortcutFilter).map((item) => ({ ...item })),
     shortcutGroups: [],
@@ -107,7 +112,8 @@ function createDefaultWorkspace(
 
 function createState(workspaces: DeskWorkspace[]): DeskState {
   return {
-    version: 8,
+    version: 9,
+    favoriteGroups: createDefaultFavoriteGroups(),
     activeWorkspaceId: workspaces[0].id,
     workspaces,
     inbox: [],
@@ -120,7 +126,9 @@ function createState(workspaces: DeskWorkspace[]): DeskState {
       { id: 'finish-work', title: '今天辛苦了，该下班了', time: '18:00', enabled: true, kind: 'rest' },
     ],
     preferences: {
-      scene: 'dawn',
+      transparentAppearance: false,
+      minimalMode: false,
+      scene: 'ocean',
       sceneMotion: true,
       autoLockMinutes: 0,
       lockActivityEnabled: true,
@@ -133,6 +141,9 @@ function createState(workspaces: DeskWorkspace[]): DeskState {
       showQuickActions: true,
       showFocusTimer: false,
       focusDurationMinutes: 25,
+      focusCycleEnabled: false,
+      focusBreakMinutes: 5,
+      showConverter: false,
       showSchedule: false,
       showCalendar: false,
       showCalculator: false,
@@ -154,15 +165,28 @@ function createState(workspaces: DeskWorkspace[]): DeskState {
 }
 
 export function createDefaultState(): DeskState {
-  return createState([
+  const state = createState([
     createDefaultWorkspace(
       'workspace-main',
       '我的桌面',
-      ['常用', '微言服务'],
+      starterCategories,
       (shortcut) => defaultStarterShortcutIdSet.has(shortcut.id),
       true,
     ),
   ]);
+  const workspace = state.workspaces[0];
+  workspace.shortcuts = defaultStarterShortcutIds.map((id, index) => ({ ...defaultShortcuts.find((site) => site.id === id)!, category: starterCategories[Math.floor(index / 4)], featured: false }));
+  const groupGradients = ['silver', 'silver', 'silver', 'mint', 'silver', 'silver'] as const;
+  workspace.categoryBackgrounds = Object.fromEntries(starterCategories.map((category, index) => [category, { gradient: groupGradients[index] }]));
+  workspace.shortcutStyle = 'icons';
+  workspace.layout = withRecommendedWidgetBackgrounds(workspace.layout);
+  const starterOrder = ['dailyOverview', 'focus', 'notes', 'quickActions', 'calendar', 'calculator'] as const;
+  workspace.layout.widgetOrder = [...starterOrder, ...workspace.layout.widgetOrder.filter((id) => !starterOrder.includes(id as typeof starterOrder[number]))];
+  state.preferences.showFocusTimer = true;
+  state.preferences.showCalendar = true;
+  state.preferences.showCalculator = true;
+  state.preferences.scene = 'night';
+  return state;
 }
 
 export function createBalancedState(): DeskState {

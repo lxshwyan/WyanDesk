@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Activity, ArrowDown, ArrowUp, CheckCircle2, CircleAlert, LoaderCircle, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { Activity, ArrowDown, ArrowUp, CheckCircle2, CircleAlert, Copy, LoaderCircle, Pencil, Plus, Trash2, X } from 'lucide-react';
 import type { Shortcut } from '../types';
 import { probeWebsites, type WebsiteAvailability } from '../lib/siteAvailability';
 import { ManagedLayer } from './ManagedLayer';
@@ -12,6 +12,7 @@ interface ShortcutManagerProps {
   onDelete: (id: string) => void;
   onEdit: (shortcut: Shortcut) => void;
   onMove: (id: string, direction: -1 | 1) => void;
+  onCopyFavorite?: (shortcut: Shortcut) => void;
 }
 
 function shortcutHost(value: string): string {
@@ -22,7 +23,7 @@ function shortcutHost(value: string): string {
   }
 }
 
-export function ShortcutManager({ category, shortcuts, onAdd, onClose, onDelete, onEdit, onMove }: ShortcutManagerProps) {
+export function ShortcutManager({ category, shortcuts, onAdd, onClose, onDelete, onEdit, onMove, onCopyFavorite }: ShortcutManagerProps) {
   const [statuses, setStatuses] = useState<Record<string, WebsiteAvailability>>({});
   const [progress, setProgress] = useState({ completed: 0, reachable: 0, unreachable: 0 });
   const [checking, setChecking] = useState(false);
@@ -87,6 +88,7 @@ export function ShortcutManager({ category, shortcuts, onAdd, onClose, onDelete,
                 </span>
               )}
               <span className="shortcut-manager-actions">
+                {onCopyFavorite && <button type="button" onClick={() => onCopyFavorite(shortcut)} aria-label={`复制${shortcut.title}到常用分组`} title="复制到常用"><Copy /></button>}
                 <button type="button" onClick={() => onMove(shortcut.id, -1)} disabled={index === 0} aria-label={`上移${shortcut.title}`}><ArrowUp /></button>
                 <button type="button" onClick={() => onMove(shortcut.id, 1)} disabled={index === shortcuts.length - 1} aria-label={`下移${shortcut.title}`}><ArrowDown /></button>
                 <button type="button" onClick={() => onEdit(shortcut)} aria-label={`编辑${shortcut.title}`}><Pencil /></button>
