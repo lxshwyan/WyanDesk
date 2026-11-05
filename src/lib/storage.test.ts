@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { defaultShortcuts } from '../data/defaults';
 import { clearDeskState, migrateDeskState, normalizeURL, parseDeskBackup, readDeskStateWithStatus, readRecoverySnapshot, serializeDeskBackup } from './storage';
 
 function installMemoryStorage(initial: Record<string, string> = {}) {
@@ -29,6 +30,34 @@ describe('normalizeURL', () => {
 });
 
 describe('migrateDeskState', () => {
+  it('keeps the previous full starter desktop and personal edits when defaults shrink', () => {
+    const categories = ['AI', '办公', '学习', '日常', '开发', '设计'];
+    const previousIds = [
+      'chatgpt', 'deepseek', 'kimi', 'doubao',
+      'tencent-docs', 'feishu', 'wps', 'qq-mail',
+      'mooc', 'wikipedia', 'scholar', 'weread',
+      'bilibili', 'wyan-tools', 'wyan-fishing', 'wyan-sudoku',
+      'github', 'gitee', 'mdn', 'stackoverflow',
+      'figma', 'canva', 'iconfont', 'unsplash',
+    ];
+    const shortcuts = previousIds.map((id, index) => ({
+      ...defaultShortcuts.find((site) => site.id === id)!,
+      category: categories[Math.floor(index / 4)],
+      featured: false,
+    }));
+    shortcuts[0].title = '我的 AI 助手';
+    shortcuts.push({ id: 'mine', title: '我的网站', url: 'https://example.com/', category: '个人', icon: '我', accent: '#3478f6', featured: false });
+
+    const migrated = migrateDeskState({ version: 9, activeWorkspaceId: 'saved', workspaces: [{
+      id: 'saved', name: '我的桌面', categories: [...categories, '个人'], shortcuts,
+    }] });
+    const restored = parseDeskBackup(serializeDeskBackup(migrated));
+
+    expect(restored.workspaces[0].categories).toEqual([...categories, '个人']);
+    expect(restored.workspaces[0].shortcuts).toEqual(shortcuts);
+    expect(restored.workspaces[0].shortcuts).toHaveLength(25);
+  });
+
   it('keeps wallpaper tuning in the original v9 backup without adding focus session state', () => {
     const value = migrateDeskState({ version: 9, preferences: { wallpaperView: { x: 10, y: 90, tone: 'dark', strength: 15 } } });
     const restored = parseDeskBackup(serializeDeskBackup(value));

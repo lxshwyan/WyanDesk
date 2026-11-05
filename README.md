@@ -4,19 +4,21 @@
 
 [在线体验](https://desk.wyanhub.com/) · [English](README.en.md) · [GitHub](https://github.com/lxshwyan/WyanDesk) · [Gitee 国内镜像](https://gitee.com/lxsh_wyan/WyanDesk)
 
-![WyanDesk 0.12.2 桌面](docs/images/wyandesk-overview.png)
+![WyanDesk 0.12.3 桌面](docs/images/wyandesk-sparse-defaults.jpg)
 
 ## 当前版本
 
-当前公开源码为 **0.12.2**，与官网及官网手动安装扩展的应用版本一致。本仓库提供可独立构建的 React、PWA 与 Chrome / Edge Manifest V3 扩展前端，采用 MIT 许可。GitHub 为主仓库，Gitee 为国内镜像；开发、Issue 和 Pull Request 以 GitHub 为准。
+当前公开源码为 **0.12.3**，与官网及官网手动安装扩展的应用版本一致。本仓库提供可独立构建的 React、PWA 与 Chrome / Edge Manifest V3 扩展前端，采用 MIT 许可。GitHub 为主仓库，Gitee 为国内镜像；开发、Issue 和 Pull Request 以 GitHub 为准。
 
 Edge 商店包 **0.12.2.1** 已正式上架，2026 年 11 月 3 日核对微软后台为 **Live**，公开页面显示相同版本。[从 Microsoft Edge 商店安装](https://microsoftedge.microsoft.com/addons/detail/cfccieknfkfiijjdhjiinlgdjjgbaecl)。第四段是商店打包修订，运行时文件与 0.12.2 手动安装包一致。
+
+0.12.3.1更新已于2026年11月5日提交，当前正在审核，尚未替换商店正式版；详情见[商店记录](docs/EXTENSION_STORE_SUBMISSION.md)。已有用户的收藏与分组保留。
 
 主分支、GitHub Release 和扩展商店分别维护。最新手动安装包见下方入口，[Releases](https://github.com/lxshwyan/WyanDesk/releases) 保留历史版本。版本说明见 [CHANGELOG](CHANGELOG.md)。
 
 ## 主要功能
 
-- **四种模式**：轻导航、图标桌面、卡片桌面和极简模式，切换保留内容。新桌面默认图标模式、六个分类和 24 个可删改网站；图标分组及网站默认全部展开，统一随页面滚动。
+- **四种模式**：轻导航、图标桌面、卡片桌面和极简模式，切换保留内容。新桌面默认图标模式，AI、办公、日常三个分类各两个可删改网站；图标分组及网站默认全部展开，统一随页面滚动。
 - **网站与常用分组**：本机建议网站名称、网站目录、拖动排序、跨组移动和独立复制到常用；不抓取目标页面或远程图标。
 - **搜索直达**：搜索组件名打开浮窗，区分网页搜索、网址与已收藏网站；“全部内容”或 `⌘/Ctrl+K` 查找跨桌面任务、便签和收集内容。
 - **可选组件**：任务、日程、今天概览、多便签、专注与休息、月历、计算器、单位换算、世界时钟、天气、本机剪贴板、倒数日和提醒。组件可排序，浮窗与原卡共享内容，并可拖动、拉伸。
@@ -56,7 +58,7 @@ npm run package:edge-store  # 从校验后的 ZIP 生成独立商店包
 
 Edge 用户推荐[安装商店版](https://microsoftedge.microsoft.com/addons/detail/cfccieknfkfiijjdhjiinlgdjjgbaecl)，后续通过 Edge 接收已审核发布的更新。已有手动安装版迁移前先导出桌面 JSON，再在商店版导入并保留原数据。
 
-Chrome 或手动安装用户仍可使用 **0.12.2** ZIP：
+Chrome 或手动安装用户仍可使用 **0.12.3** ZIP：
 
 - [官网下载 ZIP](https://desk.wyanhub.com/downloads/wyandesk-extension.zip) · [官网 SHA-256](https://desk.wyanhub.com/downloads/wyandesk-extension.zip.sha256)
 - [仓库内 ZIP](public/downloads/wyandesk-extension.zip) · [仓库内 SHA-256](public/downloads/wyandesk-extension.zip.sha256)

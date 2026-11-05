@@ -87,3 +87,9 @@ npm run package:edge-store
 商店版与手动加载版来源不同。迁移前导出桌面 JSON，在新版本导入并保留原数据。
 
 微软规则来源：[发布扩展](https://learn.microsoft.com/en-us/microsoft-edge/extensions/publish/publish-extension)、[更新扩展](https://learn.microsoft.com/en-us/microsoft-edge/extensions/update/update-extension)、[提交状态](https://learn.microsoft.com/en-us/microsoft-edge/extensions/publish/submission-states)。
+
+## 0.12.3.1 更新制品（2026-11-05）
+
+应用0.12.3将新用户初始网址缩减为AI、办公、日常三组各两个，已有分组和收藏保持。官网手动ZIP为2,980,436字节，SHA-256 `23d68aaee0f80cf4c61f3e3cfab82265f8cecc2e783928b4bbc20fb9e9b710d0`。商店适配包`wyandesk-edge-0.12.3.1.zip`为2,981,751字节，SHA-256 `aee10db171c3888c47e1190f895a15d0e1b1a66a5b9b4e6175acc5eec9a58199`；与手动ZIP的68个运行时文件逐字节相同，只变更manifest商店元数据并新增简体中文消息。权限、API、存储v9和同步边界未变。
+
+2026-11-05 21:34（Asia/Shanghai）已提交更新，微软后台实际显示0.12.3.1“正在审阅”（In review）；当前正式可安装版本仍为0.12.2.1。旧版本已验收能力不作为本轮重新实测。默认内容精简通过347项测试、网页/扩展构建、SEO、PWA与MV3检查及电脑/手机预览，已有六组24站和个人修改的备份恢复保持。

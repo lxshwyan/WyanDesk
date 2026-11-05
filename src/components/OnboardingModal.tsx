@@ -38,7 +38,7 @@ export function OnboardingModal({ extensionInstalled, mode, allowTemplates, onMo
             <DesktopModePicker value={mode} onChange={onMode} />
             {allowTemplates && <details className="onboarding-more"><summary>更多起点</summary>
             <div className="template-grid">
-              <button className={template === 'simple' ? 'active' : ''} type="button" onClick={() => chooseTemplate('simple')}><LayoutGrid /><span><strong>常用单桌面</strong><small>推荐，六组经典网站与日常工具</small></span>{template === 'simple' && <Check />}</button>
+              <button className={template === 'simple' ? 'active' : ''} type="button" onClick={() => chooseTemplate('simple')}><LayoutGrid /><span><strong>常用单桌面</strong><small>推荐，三组常用网站与日常工具</small></span>{template === 'simple' && <Check />}</button>
               <button className={template === 'balanced' ? 'active' : ''} type="button" onClick={() => chooseTemplate('balanced')}><Layers3 /><span><strong>工作 · 学习 · 生活</strong><small>按场景预置三个桌面</small></span>{template === 'balanced' && <Check />}</button>
               <button className={template === 'blank' ? 'active' : ''} type="button" onClick={() => chooseTemplate('blank')}><Sparkles /><span><strong>空白开始</strong><small>从自己的分类和网站开始</small></span>{template === 'blank' && <Check />}</button>
             </div>

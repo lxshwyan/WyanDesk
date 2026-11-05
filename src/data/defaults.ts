@@ -72,14 +72,11 @@ export const defaultShortcuts: Shortcut[] = [
 ];
 
 export const defaultStarterShortcutIds = [
-  'chatgpt', 'deepseek', 'kimi', 'doubao',
-  'tencent-docs', 'feishu', 'wps', 'qq-mail',
-  'mooc', 'wikipedia', 'scholar', 'weread',
-  'bilibili', 'wyan-tools', 'wyan-fishing', 'wyan-sudoku',
-  'github', 'gitee', 'mdn', 'stackoverflow',
-  'figma', 'canva', 'iconfont', 'unsplash',
+  'deepseek', 'doubao',
+  'tencent-docs', 'qq-mail',
+  'bilibili', 'zhihu',
 ] as const;
-export const starterCategories = ['AI', '办公', '学习', '日常', '开发', '设计'];
+export const starterCategories = ['AI', '办公', '日常'];
 
 const defaultStarterShortcutIdSet = new Set<string>(defaultStarterShortcutIds);
 
@@ -175,8 +172,8 @@ export function createDefaultState(): DeskState {
     ),
   ]);
   const workspace = state.workspaces[0];
-  workspace.shortcuts = defaultStarterShortcutIds.map((id, index) => ({ ...defaultShortcuts.find((site) => site.id === id)!, category: starterCategories[Math.floor(index / 4)], featured: false }));
-  const groupGradients = ['silver', 'silver', 'silver', 'mint', 'silver', 'silver'] as const;
+  workspace.shortcuts = defaultStarterShortcutIds.map((id, index) => ({ ...defaultShortcuts.find((site) => site.id === id)!, category: starterCategories[Math.floor(index / 2)], featured: false }));
+  const groupGradients = ['silver', 'silver', 'mint'] as const;
   workspace.categoryBackgrounds = Object.fromEntries(starterCategories.map((category, index) => [category, { gradient: groupGradients[index] }]));
   workspace.shortcutStyle = 'icons';
   workspace.layout = withRecommendedWidgetBackgrounds(workspace.layout);

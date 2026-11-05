@@ -30,12 +30,12 @@ describe('default desktop state', () => {
     expect(state.workspaces[0].layout.widgets.notes.background).toEqual({ gradient: 'apricot' });
     expect(state.workspaces.map((workspace) => workspace.name)).toEqual(['我的桌面']);
     expect(state.activeWorkspaceId).toBe('workspace-main');
-    expect(state.workspaces[0].categories).toEqual(['AI', '办公', '学习', '日常', '开发', '设计']);
-    expect(state.workspaces[0].shortcuts).toHaveLength(24);
+    expect(state.workspaces[0].categories).toEqual(['AI', '办公', '日常']);
+    expect(state.workspaces[0].shortcuts).toHaveLength(6);
     expect(state.workspaces[0].shortcuts.map((shortcut) => shortcut.id)).toEqual(defaultStarterShortcutIds);
-    expect(state.workspaces[0].shortcuts.filter((site) => site.category === '日常').map((site) => site.id)).toEqual(['bilibili', 'wyan-tools', 'wyan-fishing', 'wyan-sudoku']);
+    expect(state.workspaces[0].shortcuts.filter((site) => site.category === '日常').map((site) => site.id)).toEqual(['bilibili', 'zhihu']);
     expect(Object.keys(state.workspaces[0].categoryBackgrounds || {})).toEqual(state.workspaces[0].categories);
-    expect(state.workspaces[0].categories.every((category) => state.workspaces[0].shortcuts.filter((site) => site.category === category).length === 4)).toBe(true);
+    expect(state.workspaces[0].categories.every((category) => state.workspaces[0].shortcuts.filter((site) => site.category === category).length === 2)).toBe(true);
     expect(state.workspaces[0].quickActionIds).toEqual(['new-task', 'new-event', 'start-focus']);
   });
 

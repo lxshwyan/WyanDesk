@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "minimum_chrome_version": "116",
   "name": "微言桌面 WyanDesk",
-  "version": "0.7.3",
+  "version": "0.12.3",
   "description": "把微言桌面设为新标签页，快速收藏网页，并将当前窗口批量整理到网站组合。",
   "permissions": ["activeTab", "storage", "identity", "contextMenus"],
   "background": { "service_worker": "background.js", "type": "module" },

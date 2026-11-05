@@ -4,19 +4,21 @@ A local-first browser desktop for websites, tasks, schedules, notes and focus se
 
 [Live site](https://desk.wyanhub.com/) · [简体中文](README.md) · [GitHub](https://github.com/lxshwyan/WyanDesk) · [Gitee mirror](https://gitee.com/lxsh_wyan/WyanDesk)
 
-![WyanDesk 0.12.2 desktop](docs/images/wyandesk-overview.png)
+![WyanDesk 0.12.3 desktop](docs/images/wyandesk-sparse-defaults.jpg)
 
 ## Current version
 
-The public frontend is **0.12.2**, matching the application version of the official website and manual extension ZIP. This repository contains the standalone React app, PWA and Chrome/Edge Manifest V3 extension under the MIT license. GitHub hosts development, issues and pull requests; Gitee mirrors the source for access in China.
+The public frontend is **0.12.3**, matching the application version of the official website and manual extension ZIP. This repository contains the standalone React app, PWA and Chrome/Edge Manifest V3 extension under the MIT license. GitHub hosts development, issues and pull requests; Gitee mirrors the source for access in China.
 
 The Edge store package **0.12.2.1** is published. On **November 3, 2026**, Partner Center showed **Live**, and the public listing displayed the same version. [Install from Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/cfccieknfkfiijjdhjiinlgdjjgbaecl). The fourth component is a store packaging revision; all runtime files match the 0.12.2 manual ZIP.
+
+Update **0.12.3.1** was submitted on **November 5, 2026** and is **In review**. The store still serves 0.12.2.1 until certification completes. The website and manual ZIP are 0.12.3; existing bookmarks and groups are preserved.
 
 The main branch, GitHub Releases and the extension store are maintained separately. Use the current ZIP links below; [Releases](https://github.com/lxshwyan/WyanDesk/releases) retains historical downloads. See [CHANGELOG](CHANGELOG.md).
 
 ## Features
 
-- Navigation, icon, card and minimal modes share saved content. New desktops start with six editable categories and 24 sites. Icon groups and websites expand by default and scroll with the page.
+- Navigation, icon, card and minimal modes share saved content. New desktops start with AI, Office and Daily, with two editable sites per group. Existing bookmarks and groups are preserved. Icon groups and websites expand by default and scroll with the page.
 - User-owned favorite groups, local website-name suggestions, drag sorting, cross-category moves and independent copies into favorites.
 - Search widget names to open floating tools; distinguish web search, direct URLs and saved sites. `⌘/Ctrl+K` searches tasks, notes and collected content across desktops.
 - Optional tasks, schedules, daily overview, multiple notes, focus/rest sessions, month calendar, calculator, unit conversion, world clock, weather, local clipboard, countdowns and reminders. Floating widget views share content with their original cards.

@@ -2,6 +2,12 @@
 
 All notable changes to WyanDesk are documented here.
 
+## [0.12.3] - 2026-11-05
+
+- Start new desktops with three groups and two websites per group: AI, Office and Daily.
+- Leave room for personal bookmarks while keeping the full optional website catalog.
+- Preserve existing desktop groups, websites and personal edits during upgrades and backup restoration.
+
 ## [0.12.2] - 2026-11-02
 
 ### Microsoft Edge Add-ons — 2026-11-03
